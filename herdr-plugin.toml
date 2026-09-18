@@ -1,0 +1,61 @@
+id = "zamarrowski.issues"
+name = "Issues"
+version = "0.1.0"
+min_herdr_version = "0.9.0"
+description = "Browse the GitHub issues of the current repo in a popup and hand one to any coding agent in its own git worktree"
+platforms = ["macos", "linux"]
+
+# ── actions (bind them with [[keys.command]] type = "plugin_action") ─────────
+
+[[actions]]
+id = "open"
+title = "Issues: browse this repo's GitHub issues"
+contexts = ["workspace", "tab", "pane"]
+command = ["sh", "-c", "exec \"$HERDR_BIN_PATH\" plugin pane open --plugin zamarrowski.issues --entrypoint browser --focus"]
+
+# From a keybinding it asks for an issue number or URL; from a Ctrl+click on an issue URL it starts that issue.
+[[actions]]
+id = "start"
+title = "Issues: start an issue in a new worktree"
+contexts = ["workspace", "tab", "pane"]
+command = ["sh", "-c", "exec \"$HERDR_BIN_PATH\" plugin pane open --plugin zamarrowski.issues --entrypoint start --focus --env \"HERDR_ISSUES_URL=$HERDR_PLUGIN_CLICKED_URL\""]
+
+[[actions]]
+id = "setup"
+title = "Issues: checks, keybindings and config"
+contexts = ["workspace", "tab", "pane"]
+command = ["sh", "-c", "exec \"$HERDR_BIN_PATH\" plugin pane open --plugin zamarrowski.issues --entrypoint setup --focus"]
+
+# ── popups ───────────────────────────────────────────────────────────────────
+
+[[panes]]
+id = "browser"
+title = "Issues"
+placement = "popup"
+width = "85%"
+height = "85%"
+command = ["sh", "bin/run.sh", "scripts/issues.mjs"]
+
+[[panes]]
+id = "start"
+title = "Start issue"
+placement = "popup"
+width = "75%"
+height = "60%"
+command = ["sh", "bin/run.sh", "scripts/start.mjs"]
+
+[[panes]]
+id = "setup"
+title = "Issues setup"
+placement = "popup"
+width = "85%"
+height = "85%"
+command = ["sh", "bin/run.sh", "scripts/setup.mjs"]
+
+# ── Ctrl+click on a GitHub issue URL in any pane ─────────────────────────────
+
+[[link_handlers]]
+id = "github-issue"
+title = "Start this issue in a worktree"
+pattern = "^https://github\\.com/[^/]+/[^/]+/issues/[0-9]+(?:[/?#].*)?$"
+action = "start"

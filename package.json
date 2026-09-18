@@ -1,0 +1,26 @@
+{
+  "name": "herdr-issues",
+  "version": "0.1.0",
+  "private": true,
+  "description": "herdr plugin: browse the GitHub issues of the current repo in a popup and hand one to any coding agent in its own git worktree",
+  "type": "module",
+  "license": "MIT",
+  "author": "Sergio Zamarro (https://github.com/zamarrowski)",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zamarrowski/herdr-issues.git"
+  },
+  "homepage": "https://github.com/zamarrowski/herdr-issues#readme",
+  "bugs": "https://github.com/zamarrowski/herdr-issues/issues",
+  "keywords": ["herdr", "herdr-plugin", "github", "issues", "worktree", "coding-agent", "claude-code", "codex", "gemini-cli"],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "check": "node --check lib/*.mjs scripts/*.mjs test/*.mjs test/fixtures/*.mjs",
+    "issues": "sh bin/run.sh scripts/issues.mjs",
+    "start-issue": "sh bin/run.sh scripts/start.mjs",
+    "setup": "sh bin/run.sh scripts/setup.mjs"
+  }
+}

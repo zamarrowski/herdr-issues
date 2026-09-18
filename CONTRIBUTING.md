@@ -1,0 +1,127 @@
+# Contributing
+
+Thanks for taking the time. Bug reports, agent quirks, documentation fixes and features are all welcome.
+
+## Before you start
+
+- Look through the [open issues](https://github.com/zamarrowski/herdr-issues/issues) first; someone
+  may already be on it.
+- For anything bigger than a fix, open an issue describing the change before writing code, so we can
+  agree on the approach.
+- Be kind. This project follows the [Contributor Covenant](CODE_OF_CONDUCT.md).
+
+## Development setup
+
+You need herdr ≥ 0.9.0, Node.js ≥ 20, git and `gh` (logged in). No `npm install`: the plugin has no
+dependencies.
+
+```sh
+git clone https://github.com/zamarrowski/herdr-issues.git
+cd herdr-issues
+herdr plugin link "$PWD"            # herdr runs the plugin straight from this checkout
+herdr plugin action invoke zamarrowski.issues.setup
+```
+
+Edit, then open the popup again: herdr starts a fresh process every time, so there is nothing to
+rebuild or reload. After changing `herdr-plugin.toml` (actions, panes, link handlers) re-link:
+
+```sh
+herdr plugin unlink zamarrowski.issues && herdr plugin link "$PWD"
+```
+
+Useful while developing:
+
+```sh
+npm test                                              # unit tests (node:test, no network, no herdr needed)
+npm run check                                         # syntax check of every module
+sh bin/run.sh scripts/issues.mjs --cwd ~/code/repo    # the popups have a plain CLI face without a TTY
+sh bin/run.sh scripts/start.mjs 482 --cwd ~/code/repo --no-agent
+herdr plugin log list --plugin zamarrowski.issues     # stdout/stderr of the actions herdr ran
+```
+
+To try the popups outside herdr, run a script from a terminal: `node scripts/issues.mjs --cwd ~/code/repo`.
+Starting an issue needs a running herdr and works from any terminal as long as `herdr` is on PATH or
+`HERDR_BIN_PATH` points to it.
+
+## Project layout
+
+```
+herdr-plugin.toml     manifest: actions (open, start, setup), popups (browser, start, setup), the link handler
+bin/run.sh            finds Node.js and runs a script
+lib/paths.mjs         plugin id, config/state directories
+lib/config.mjs        defaults, config.json loading and validation, templates, agent resolution
+lib/context.mjs       HERDR_PLUGIN_CONTEXT_JSON and which checkout to use
+lib/github.mjs        gh wrapper: repo, issue list/view, URL parsing
+lib/herdr.mjs         herdr CLI wrapper: worktree, agent, notification, metadata
+lib/start.mjs         the start flow (worktree → agent → prompt), agent-agnostic
+lib/launch.mjs        confirm / pick agent / progress screens shared by both popups
+lib/tui.mjs           screen loop, picker, stepper, key helpers
+lib/setup.mjs         keybinding block, starter config, environment checks
+lib/format.mjs        ANSI, widths, wrapping, slugs
+lib/proc.mjs          spawn with timeout, binary lookup, git root
+scripts/issues.mjs    the issues browser popup (and CLI list)
+scripts/start.mjs     the start popup (and CLI)
+scripts/setup.mjs     the setup popup (and CLI)
+test/                 node:test suites; test/fixtures/fake-herdr is a scripted stand-in for the herdr CLI
+docs/                 configuration and agents reference
+```
+
+Design rules worth knowing:
+
+- **herdr is the API.** Everything herdr-related is a `herdr …` subprocess through `HERDR_BIN_PATH`
+  (`lib/herdr.mjs`). No socket protocol, no private files. This keeps the plugin working across herdr
+  versions and lets the tests script herdr's answers.
+- **Agent-agnostic.** Nothing may special-case an agent kind outside `config.json` data
+  (`agent_args`, `trust_prompt_pattern`). If an agent needs a workaround, make it a configurable
+  behaviour that any agent can use.
+- **No dependencies.** Node.js standard library only, so `herdr plugin install` needs no build step.
+- **Nothing destructive without a key press.** The plugin never edits the user's herdr config, answers
+  agent dialogs beyond the trust prompt, or deletes anything on its own.
+
+## Code style
+
+- ESM (`.mjs`), Node ≥ 20 features are fine (`node:test`, `Array.prototype.at`, top-level await).
+- Two spaces, no semicolons, single quotes, trailing commas, arrow functions; the existing files are
+  the style guide. A blank line before a `return` that follows other statements.
+- Small pure functions in `lib/`, side effects in `scripts/`. If it can be unit tested, it lives in `lib/`.
+- User-facing text is plain English, one sentence per message, no exclamation marks.
+
+## Tests
+
+```sh
+npm test
+```
+
+Tests use `node:test` and never touch the network, the user's herdr or `~/.config`. herdr is replaced
+by `test/fixtures/fake-herdr`, which records every call and answers according to
+`FAKE_HERDR_SCENARIO` (see the file for the scenarios: `happy`, `branch-exists`, `already-open`,
+`not-ready`, `name-taken`, `shell-not-ready`, `bad-kind`, `prompt-swallowed`). Add a scenario when you
+add a behaviour to the start flow, and a test in `test/start.test.mjs` that asserts the exact herdr
+commands issued. `test/manifest.test.mjs` keeps the manifest, `package.json` and
+`config.example.json` consistent; it will tell you when a new config key needs an example.
+
+## Adding support for an agent's startup dialog
+
+1. Reproduce: start the agent in an empty worktree and copy the exact text herdr shows
+   (`herdr agent read <pane> --source visible`).
+2. If the default `trust_prompt_pattern` in `lib/config.mjs` does not match it, extend the pattern with
+   the shortest distinctive phrase, keeping it case-insensitive and specific to *trust/permission to
+   run here* questions. Never match generic words that a tool-permission prompt could contain.
+3. Add the phrase to the `not-ready` scenario of the fake herdr or a test case in
+   `test/start.test.mjs`, and mention the agent in `docs/agents.md`.
+
+## Pull requests
+
+- One change per pull request, with a short description of the why.
+- `npm test` and `npm run check` pass.
+- Update `README.md` / `docs/` when behaviour or configuration changes, and add a line under
+  *Unreleased* in `CHANGELOG.md`.
+- Keep `herdr-plugin.toml`, `package.json` and `config.example.json` in sync (the manifest test checks).
+
+## Releasing (maintainers)
+
+1. Bump `version` in `herdr-plugin.toml` and `package.json` (same value).
+2. Move the *Unreleased* notes in `CHANGELOG.md` under the new version and date.
+3. Commit, tag `vX.Y.Z`, push with tags. The herdr marketplace re-indexes the default branch within
+   about 30 minutes; `herdr plugin install zamarrowski/herdr-issues` always installs the default
+   branch head, and `--ref vX.Y.Z` pins a tag.

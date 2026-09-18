@@ -1,0 +1,27 @@
+{
+  "$comment": "Every key is optional and documented in docs/configuration.md. Templates accept {number} {title} {slug} {url} {repo} {owner} {name} {branch} {label} {agent} {author} {labels}.",
+  "agent": "auto",
+  "agent_args": {},
+  "agent_name": "issue-{number}",
+  "branch": "issue-{number}-{slug}",
+  "base": "",
+  "label": "#{number} {title}",
+  "label_max": 40,
+  "slug_max": 40,
+  "prompt": "Work on GitHub issue #{number} ({url}): \"{title}\". Read the issue and its comments first with `gh issue view {number} --comments`, then implement it in this worktree (branch {branch}).",
+  "focus": true,
+  "trust_repository": false,
+  "auto_accept_trust_prompt": true,
+  "trust_prompt_pattern": "trust the files|trust this (folder|directory|workspace|repository)|do you trust|yes, proceed",
+  "notify": true,
+  "workspace_token": true,
+  "limit": 100,
+  "timeouts": {
+    "worktree_ms": 180000,
+    "agent_start_ms": 90000,
+    "agent_ready_ms": 20000,
+    "prompt_ms": 30000,
+    "submit_check_ms": 6000,
+    "retry_ms": 1000
+  }
+}

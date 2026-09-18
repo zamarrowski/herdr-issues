@@ -1,0 +1,42 @@
+name: Bug report
+description: Something does not work as documented.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, what happened instead. Screenshots of the popup help.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Paste the output of the setup checks.
+      placeholder: |
+        $ sh bin/run.sh scripts/setup.mjs --check < /dev/null
+        ✓ herdr 0.9.1
+        ✓ node v22.0.0
+        ✓ gh 2.97.0, logged in as you
+        · config.json not created yet, defaults apply
+      render: text
+    validations:
+      required: true
+  - type: input
+    id: agent
+    attributes:
+      label: Agent kind and version
+      placeholder: codex 0.42.0
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: "`herdr plugin log list --plugin zamarrowski.issues --limit 5`, and the CLI output if you can reproduce it with `scripts/start.mjs <n> --cwd <repo>`."
+      render: text
+  - type: textarea
+    id: config
+    attributes:
+      label: config.json
+      description: Your config, if you have one (remove anything private).
+      render: json
