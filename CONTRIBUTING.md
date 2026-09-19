@@ -57,6 +57,7 @@ lib/start.mjs         the start flow (worktree → agent → prompt), agent-agno
 lib/launch.mjs        confirm / pick agent / progress screens shared by both popups
 lib/tui.mjs           screen loop, picker, stepper, key helpers
 lib/setup.mjs         keybinding block, starter config, environment checks
+lib/markdown.mjs      Markdown subset → styled terminal lines (issue bodies and comments)
 lib/format.mjs        ANSI, widths, wrapping, slugs
 lib/proc.mjs          spawn with timeout, binary lookup, git root
 scripts/issues.mjs    the issues browser popup (and CLI list)

@@ -10,6 +10,7 @@ import { ago, c, lineLR, pad, paint, plural, truncate, visibleWidth, wrap } from
 import { assigneeText, labelText, listIssues, openInBrowser, repoInfo, viewIssue } from '../lib/github.mjs'
 import { FALLBACK_KINDS, agentKinds } from '../lib/herdr.mjs'
 import { createLauncher } from '../lib/launch.mjs'
+import { renderMarkdown } from '../lib/markdown.mjs'
 import { createScreen, editLine, header, hint, inputRow, isArrowDown, isArrowUp, isCtrlC, isDown, isEnter, isEsc, isUp, layout, notice, rule, window } from '../lib/tui.mjs'
 
 const USAGE = 'usage: issues.mjs [--cwd PATH] [--repo owner/name] [--agent KIND] [--closed] [--json]'
@@ -39,6 +40,7 @@ const state = {
   filtering: false,
   detail: null,
   detailFull: false,
+  rendered: true, // Markdown rendering in the detail view; m toggles the raw text
   scroll: 0,
   message: warnings.length ? `config.json: ${warnings[0]}` : '',
   kinds: [...FALLBACK_KINDS],
@@ -215,13 +217,14 @@ const detailLines = width => {
   if (issue.assignees?.length) out.push(paint(c.cyan, `assignees: ${assigneeText(issue)}`))
   out.push(paint(c.dim, issue.url ?? ''))
   out.push('')
+  const body = text => (state.rendered ? renderMarkdown(text, inner) : wrap(text, inner))
   if (!state.detailFull) out.push(paint(c.dim, 'Loading description…'))
-  else if (issue.body?.trim()) out.push(...wrap(issue.body, inner))
+  else if (issue.body?.trim()) out.push(...body(issue.body))
   else out.push(paint(c.dim, '(no description)'))
   for (const comment of issue.comments ?? []) {
     out.push('')
     out.push(paint(c.dim, `── ${comment.author?.login ?? 'someone'} · ${ago(comment.createdAt)} ago`))
-    out.push(...wrap(comment.body, inner))
+    out.push(...body(comment.body))
   }
 
   return out
@@ -236,7 +239,7 @@ const detailFrame = (width, height) => {
   state.scroll = Math.max(0, Math.min(state.scroll, Math.max(0, lines.length - bodyRows)))
   body.push(...lines.slice(state.scroll, state.scroll + bodyRows).map(line => ` ${line}`))
   const more = lines.length - state.scroll - bodyRows
-  const footer = [state.message ? notice(state.message) : more > 0 ? paint(c.dim, ` ↓ ${more} more lines`) : '', hint('s start · o browser · j/k scroll · space page · Esc back · q quit')]
+  const footer = [state.message ? notice(state.message) : more > 0 ? paint(c.dim, ` ↓ ${more} more lines`) : '', hint(`s start · o browser · m ${state.rendered ? 'raw text' : 'markdown'} · j/k scroll · space page · Esc back · q quit`)]
 
   return layout(body, footer, height)
 }
@@ -305,7 +308,10 @@ const onDetailKey = key => {
   else if (key === '\x1b[5~') state.scroll = Math.max(0, state.scroll - Math.max(1, process.stdout.rows - 6))
   else if (key === 'g') state.scroll = 0
   else if (key === 'G') state.scroll = Number.MAX_SAFE_INTEGER
-  else if (key === 's' || key === 'S') return askStart()
+  else if (key === 'm' || key === 'M') {
+    state.rendered = !state.rendered
+    state.scroll = 0
+  } else if (key === 's' || key === 'S') return askStart()
   else if (key === 'o' || key === 'O') return openBrowser()
 }
 

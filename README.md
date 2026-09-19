@@ -39,8 +39,10 @@ reading the issue.
 ## What it does
 
 - **Browse.** Open issues newest first, with labels, assignees and age. `/` filters as you type, `c`
-  includes closed issues, `Enter` shows the description and the comments, `o` opens the issue in the
-  browser. The last list is cached per repository so the popup paints instantly and refreshes behind.
+  includes closed issues, `Enter` shows the description and the comments rendered as Markdown
+  (headings, lists, task lists, code blocks, quotes, links, `#123` and `@mentions`), `o` opens the
+  issue in the browser. The last list is cached per repository so the popup paints instantly and
+  refreshes behind.
 - **Start.** One key turns an issue into a worktree, a herdr workspace, a running agent and a prompt.
   A confirmation screen shows exactly what is about to happen: agent, branch, workspace label, prompt.
 - **Any agent.** By default the plugin uses the agent already running in the pane you opened the popup
@@ -115,7 +117,7 @@ pane's directory (through `gh`, so forks and `gh repo set-default` are honoured)
 | Key | Action |
 | --- | --- |
 | `j` `k` / arrows, `g` `G` | move |
-| `Enter` / `l` | read the issue: description and comments (`j` `k` / `space` scroll, `Esc` back) |
+| `Enter` / `l` | read the issue: description and comments (`j` `k` / `space` scroll, `m` raw text instead of rendered Markdown, `Esc` back) |
 | `s` | **start** the issue (confirmation first) |
 | `o` | open the issue in the browser |
 | `/` | filter by number, title, label, assignee or author; `Esc` clears |
