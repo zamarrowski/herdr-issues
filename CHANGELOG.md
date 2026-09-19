@@ -13,7 +13,8 @@ First public release.
 ### Added
 
 - Issues browser popup: open issues of the current repository with labels, assignees and age;
-  read description and comments rendered as Markdown (`m` shows the raw text); filter with `/`;
+  read description and comments rendered as Markdown with syntax-highlighted code blocks (highlight.js,
+  fetched by the manifest build step and optional at runtime; `m` shows the raw text); filter with `/`;
   include closed issues; open in the browser; per-repository cache so the popup paints instantly.
 - Start flow: `herdr worktree create` on a branch named after the issue, `herdr agent start` of any
   agent kind herdr supports, `herdr agent prompt` with a configurable prompt, a toast and an `issue`

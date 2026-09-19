@@ -6,10 +6,15 @@ herdr plugins are ordinary code that runs as your user, with your environment an
 herdr-issues keeps its footprint small and inspectable:
 
 - **Processes it runs:** `herdr` (through `HERDR_BIN_PATH`), `gh`, `git rev-parse` and `node`. Nothing
-  else, and no shell strings built from issue content: every subprocess gets an argument array.
-- **Network:** only what `gh` does to list and read issues (`gh issue list`, `gh issue view`,
-  `gh repo view`) and, when you press `o`, `gh issue view --web`. The plugin makes no HTTP requests
-  of its own and never reads or stores GitHub tokens; `gh` uses its own login.
+  else, and no shell strings built from issue content: every subprocess gets an argument array. At
+  install time herdr runs the manifest's build step, `npm ci`, after showing it to you.
+- **Dependencies:** one, [highlight.js](https://github.com/highlightjs/highlight.js) (BSD-3-Clause),
+  pinned by `package-lock.json` and loaded only to colour code blocks. It is optional at runtime: when
+  it is missing the plugin renders code blocks plain.
+- **Network:** `npm ci` at install time, and afterwards only what `gh` does to list and read issues
+  (`gh issue list`, `gh issue view`, `gh repo view`) and, when you press `o`, `gh issue view --web`.
+  The plugin makes no HTTP requests of its own and never reads or stores GitHub tokens; `gh` uses its
+  own login.
 - **Files it writes:** an issue cache under `HERDR_PLUGIN_STATE_DIR`, `config.json` under
   `HERDR_PLUGIN_CONFIG_DIR` when you save a default agent or create it from the setup popup, and your
   herdr `config.toml` only when you explicitly press `k`/`u` in the setup popup or run

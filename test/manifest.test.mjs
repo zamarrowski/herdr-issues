@@ -82,10 +82,14 @@ describe('herdr-plugin.toml', () => {
 })
 
 describe('package.json', () => {
-  it('has no runtime dependencies', () => {
-    assert.equal(pkg.dependencies, undefined)
+  it('depends on highlight.js only, fetched by the manifest build step', () => {
+    assert.deepEqual(Object.keys(pkg.dependencies), ['highlight.js'])
     assert.equal(pkg.devDependencies, undefined)
     assert.equal(pkg.type, 'module')
+    assert.ok(fs.existsSync(path.join(projectRoot, 'package-lock.json')), 'npm ci needs package-lock.json')
+    const build = tables('build')
+    assert.equal(build.length, 1)
+    assert.deepEqual(build[0].command.slice(0, 2), ['npm', 'ci'])
   })
   it('ships the example config with every default key', async () => {
     const { DEFAULTS } = await import('../lib/config.mjs')

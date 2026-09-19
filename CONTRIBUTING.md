@@ -12,12 +12,12 @@ Thanks for taking the time. Bug reports, agent quirks, documentation fixes and f
 
 ## Development setup
 
-You need herdr ≥ 0.9.0, Node.js ≥ 20, git and `gh` (logged in). No `npm install`: the plugin has no
-dependencies.
+You need herdr ≥ 0.9.0, Node.js ≥ 20, git and `gh` (logged in).
 
 ```sh
 git clone https://github.com/zamarrowski/herdr-issues.git
 cd herdr-issues
+npm ci                              # highlight.js, the only dependency; `plugin link` does not run builds
 herdr plugin link "$PWD"            # herdr runs the plugin straight from this checkout
 herdr plugin action invoke zamarrowski.issues.setup
 ```
@@ -58,6 +58,7 @@ lib/launch.mjs        confirm / pick agent / progress screens shared by both pop
 lib/tui.mjs           screen loop, picker, stepper, key helpers
 lib/setup.mjs         keybinding block, starter config, environment checks
 lib/markdown.mjs      Markdown subset → styled terminal lines (issue bodies and comments)
+lib/highlight.mjs     code blocks → highlight.js → ANSI, optional at runtime
 lib/format.mjs        ANSI, widths, wrapping, slugs
 lib/proc.mjs          spawn with timeout, binary lookup, git root
 scripts/issues.mjs    the issues browser popup (and CLI list)
@@ -75,7 +76,10 @@ Design rules worth knowing:
 - **Agent-agnostic.** Nothing may special-case an agent kind outside `config.json` data
   (`agent_args`, `trust_prompt_pattern`). If an agent needs a workaround, make it a configurable
   behaviour that any agent can use.
-- **No dependencies.** Node.js standard library only, so `herdr plugin install` needs no build step.
+- **One dependency, optional at runtime.** highlight.js is fetched by the manifest's `[[build]]` step
+  and loaded lazily; when it is missing the plugin must keep working (code blocks turn plain). Anything
+  else stays in the Node.js standard library. A new dependency needs a discussion first, must be
+  optional in the same way, and must be pinned by `package-lock.json`.
 - **Nothing destructive without a key press.** The plugin never edits the user's herdr config, answers
   agent dialogs beyond the trust prompt, or deletes anything on its own.
 
@@ -93,7 +97,8 @@ Design rules worth knowing:
 npm test
 ```
 
-Tests use `node:test` and never touch the network, the user's herdr or `~/.config`. herdr is replaced
+Tests use `node:test` and never touch the network, the user's herdr or `~/.config` (`npm ci` once,
+so the highlight.js tests can run). herdr is replaced
 by `test/fixtures/fake-herdr`, which records every call and answers according to
 `FAKE_HERDR_SCENARIO` (see the file for the scenarios: `happy`, `branch-exists`, `already-open`,
 `not-ready`, `name-taken`, `shell-not-ready`, `bad-kind`, `prompt-swallowed`). Add a scenario when you
@@ -118,6 +123,7 @@ commands issued. `test/manifest.test.mjs` keeps the manifest, `package.json` and
 - Update `README.md` / `docs/` when behaviour or configuration changes, and add a line under
   *Unreleased* in `CHANGELOG.md`.
 - Keep `herdr-plugin.toml`, `package.json` and `config.example.json` in sync (the manifest test checks).
+- No new dependencies without an issue first (see the design rules above).
 
 ## Releasing (maintainers)
 

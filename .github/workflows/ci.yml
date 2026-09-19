@@ -22,6 +22,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
+      - name: Install highlight.js
+        run: npm ci --omit=dev --no-fund --no-audit
       - name: Syntax check
         run: npm run check
       - name: Tests

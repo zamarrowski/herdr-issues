@@ -5,6 +5,11 @@ min_herdr_version = "0.9.0"
 description = "Browse the GitHub issues of the current repo in a popup and hand one to any coding agent in its own git worktree"
 platforms = ["macos", "linux"]
 
+# Fetches highlight.js, the only dependency, for syntax highlighting in code blocks. herdr runs this
+# after `herdr plugin install` once you confirm. Without it the plugin still works; code blocks are plain.
+[[build]]
+command = ["npm", "ci", "--omit=dev", "--no-fund", "--no-audit"]
+
 # ── actions (bind them with [[keys.command]] type = "plugin_action") ─────────
 
 [[actions]]

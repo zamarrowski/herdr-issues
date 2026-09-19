@@ -3,7 +3,7 @@
 [![CI](https://github.com/zamarrowski/herdr-issues/actions/workflows/ci.yml/badge.svg)](https://github.com/zamarrowski/herdr-issues/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![herdr ≥ 0.9.0](https://img.shields.io/badge/herdr-%E2%89%A5%200.9.0-black)](https://herdr.dev)
-[![No dependencies](https://img.shields.io/badge/dependencies-none-brightgreen)](package.json)
+[![Dependencies: highlight.js](https://img.shields.io/badge/dependencies-highlight.js-brightgreen)](package.json)
 
 A [herdr](https://herdr.dev) plugin that shows the GitHub issues of the repository you are in and hands
 any of them to a coding agent in its own git worktree. Claude Code, Codex, Gemini CLI, Pi, OpenCode,
@@ -40,8 +40,8 @@ reading the issue.
 
 - **Browse.** Open issues newest first, with labels, assignees and age. `/` filters as you type, `c`
   includes closed issues, `Enter` shows the description and the comments rendered as Markdown
-  (headings, lists, task lists, code blocks, quotes, links, `#123` and `@mentions`), `o` opens the
-  issue in the browser. The last list is cached per repository so the popup paints instantly and
+  (headings, lists, task lists, syntax-highlighted code blocks, quotes, links, `#123` and
+  `@mentions`), `o` opens the issue in the browser. The last list is cached per repository so the popup paints instantly and
   refreshes behind.
 - **Start.** One key turns an issue into a worktree, a herdr workspace, a running agent and a prompt.
   A confirmation screen shows exactly what is about to happen: agent, branch, workspace label, prompt.
@@ -52,13 +52,15 @@ reading the issue.
 - **Scriptable.** The same flow runs from a shell, a script or another agent: `start.mjs 482 --agent
   codex`, JSON output included.
 - **Sidebar label.** The new workspace carries an `issue` token (`#482`) you can show in the herdr sidebar.
-- **Zero dependencies.** Node.js standard library only. GitHub through the `gh` CLI you already have,
-  herdr through its own CLI.
+- **One dependency.** [highlight.js](https://highlightjs.org) colours the code blocks; herdr fetches it
+  when you install the plugin, and without it everything still works with plain code blocks. The rest is
+  the Node.js standard library. GitHub through the `gh` CLI you already have, herdr through its own CLI.
 
 ## Requirements
 
 - [herdr](https://herdr.dev) **0.9.0 or newer** (developed and tested on 0.9.1)
-- **Node.js 20 or newer**
+- **Node.js 20 or newer**, with `npm` (bundled) and network access at install time: herdr runs
+  `npm ci` to fetch highlight.js
 - **`gh`**, the [GitHub CLI](https://cli.github.com), logged in (`gh auth login`)
 - **git**, and a local checkout of the repository (starting an issue creates a worktree of it)
 - macOS or Linux
@@ -68,6 +70,10 @@ reading the issue.
 ```sh
 herdr plugin install zamarrowski/herdr-issues
 ```
+
+herdr shows the source and the build command it is about to run (`npm ci`, which fetches highlight.js
+for the code blocks) and asks before running it. Declining is fine: the plugin works the same, with
+code blocks in plain text.
 
 Then open the setup popup. It checks herdr, Node, `gh` and its login, and offers to add the
 keybindings to your `config.toml` (with a backup) and to create a starter `config.json`:
@@ -103,6 +109,7 @@ For local development clone the repository and link it instead of installing:
 
 ```sh
 git clone https://github.com/zamarrowski/herdr-issues.git
+cd herdr-issues && npm ci && cd ..      # `plugin link` does not run the build step
 herdr plugin link "$PWD/herdr-issues"
 ```
 
@@ -260,6 +267,8 @@ rows = [
 
 - Nothing leaves your machine except the `gh` calls that list and read issues and, when you press `o`,
   opening the issue in your browser. No tokens are read or stored: `gh` uses its own login.
+- Installing runs `npm ci`, which downloads highlight.js (and nothing else) from the npm registry,
+  pinned by `package-lock.json`. The plugin never talks to the registry afterwards.
 - The issue list is cached per repository in the plugin state directory
   (`~/.local/state/herdr/plugins/zamarrowski.issues/issues/`). Delete it whenever you like.
 - The plugin never edits your herdr `config.toml` unless you press `k` in the setup popup or run
@@ -282,6 +291,9 @@ the setup popup (`herdr plugin action invoke zamarrowski.issues.setup`) runs the
   `herdr agent prompt issue-<n> "…"`. Extend `trust_prompt_pattern` in `config.json` so it is accepted
   next time, and please [open an issue](https://github.com/zamarrowski/herdr-issues/issues) with the
   agent and the text of the dialog.
+- **Code blocks have no colours** — highlight.js is not installed: the build step was declined, or the
+  plugin was linked from a checkout without `npm ci`. Run `npm ci` in the plugin directory
+  (`herdr plugin list` prints it as `plugin_root`) or reinstall. The setup popup shows which it is.
 - **"ui_busy"** — herdr cannot open a popup while Settings, copy mode or another modal is active.
 - **Keybinding does nothing** — `herdr server reload-config` after editing `config.toml`; `prefix+?`
   lists the active bindings.

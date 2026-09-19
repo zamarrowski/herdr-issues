@@ -3,6 +3,8 @@ import { describe, it } from 'node:test'
 import { c, stripAnsi, visibleWidth } from '../lib/format.mjs'
 import { parseInline, renderMarkdown, wrapSegments } from '../lib/markdown.mjs'
 
+const noHighlight = { highlight: () => null }
+
 const plain = lines => lines.map(stripAnsi)
 const styled = (lines, code) => lines.some(line => line.includes(code))
 
@@ -95,7 +97,7 @@ hidden text
 </details>
 | a | b |
 `
-  const lines = renderMarkdown(doc, 40)
+  const lines = renderMarkdown(doc, 40, noHighlight)
   const text = plain(lines)
 
   it('keeps every line within the width', () => {
@@ -143,5 +145,20 @@ hidden text
     assert.deepEqual(renderMarkdown('', 40), [])
     assert.deepEqual(renderMarkdown(null, 40), [])
     assert.deepEqual(plain(renderMarkdown('```\nx\n', 40)), ['    x'])
+    assert.deepEqual(plain(renderMarkdown('```js\nlet a\nlet b', 40)), ['    js', '    let a', '    let b'], 'an unclosed highlighted block is still flushed')
+  })
+
+  it('syntax-highlights fenced blocks and stays within the width', () => {
+    const block = '```js\nconst answer = 42 // the answer to a rather long question that will not fit in forty columns\n```'
+    const highlighted = renderMarkdown(block, 40)
+    assert.ok(highlighted[1].includes(`${c.magenta}const`), 'keywords are coloured')
+    assert.ok(highlighted[1].includes(`${c.yellow}42`), 'numbers are coloured')
+    for (const line of highlighted) assert.ok(visibleWidth(line) <= 40)
+    assert.ok(stripAnsi(highlighted[1]).endsWith('…'))
+    const dim = renderMarkdown(block, 40, noHighlight)
+    assert.ok(dim[1].startsWith(c.dim), 'without a highlighter the block is dim')
+    assert.ok(!dim[1].includes(c.magenta))
+    const unknown = renderMarkdown('```nosuchlang\nconst x\n```', 40)
+    assert.ok(unknown[1].startsWith(c.dim), 'unknown languages stay dim')
   })
 })

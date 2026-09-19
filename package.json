@@ -12,7 +12,17 @@
   },
   "homepage": "https://github.com/zamarrowski/herdr-issues#readme",
   "bugs": "https://github.com/zamarrowski/herdr-issues/issues",
-  "keywords": ["herdr", "herdr-plugin", "github", "issues", "worktree", "coding-agent", "claude-code", "codex", "gemini-cli"],
+  "keywords": [
+    "herdr",
+    "herdr-plugin",
+    "github",
+    "issues",
+    "worktree",
+    "coding-agent",
+    "claude-code",
+    "codex",
+    "gemini-cli"
+  ],
   "engines": {
     "node": ">=20"
   },
@@ -22,5 +32,8 @@
     "issues": "sh bin/run.sh scripts/issues.mjs",
     "start-issue": "sh bin/run.sh scripts/start.mjs",
     "setup": "sh bin/run.sh scripts/setup.mjs"
+  },
+  "dependencies": {
+    "highlight.js": "^11.12.0"
   }
 }

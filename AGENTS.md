@@ -5,7 +5,8 @@ Guidance for AI coding agents (and humans in a hurry) working on this repository
 - **Read first:** `README.md` for behaviour, `CONTRIBUTING.md` for layout, style and the design rules,
   `docs/configuration.md` for every config key. herdr's own CLI is the authority for its commands:
   run `herdr agent`, `herdr worktree`, `herdr plugin` (the bare group) to see their syntax.
-- **No dependencies.** Do not add packages. Node.js standard library only, Node ≥ 20.
+- **One dependency, highlight.js, optional at runtime.** Do not add packages; if a change truly needs
+  one, stop and ask. Everything else is the Node.js standard library, Node ≥ 20. `npm ci` before tests.
 - **herdr only through its CLI**, via `lib/herdr.mjs` and `HERDR_BIN_PATH`. Do not talk to the socket
   or read herdr's internal files.
 - **Stay agent-agnostic.** Never branch on an agent kind in code. Behaviour that differs per agent

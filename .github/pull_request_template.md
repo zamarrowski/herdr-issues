@@ -15,4 +15,4 @@
 - [ ] `npm test` and `npm run check` pass
 - [ ] Behaviour or configuration changes are reflected in `README.md` / `docs/`
 - [ ] A line was added under *Unreleased* in `CHANGELOG.md`
-- [ ] No new dependencies, no agent-specific branches in code (see `CONTRIBUTING.md`)
+- [ ] No new dependencies (highlight.js is the only one), no agent-specific branches in code (see `CONTRIBUTING.md`)
