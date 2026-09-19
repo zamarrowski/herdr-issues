@@ -14,9 +14,7 @@ describe('planIssue', () => {
     assert.equal(plan.branch, 'issue-482-returns-page-crashes-on-empty-address')
     assert.equal(plan.label, '#482 Returns page crashes on empty addr…')
     assert.equal(plan.agentName, 'issue-482')
-    assert.match(plan.prompt, /GitHub issue #482 \(https:\/\/github.com\/acme\/shop\/issues\/482\)/)
-    assert.match(plan.prompt, /gh issue view 482 --comments/)
-    assert.match(plan.prompt, /branch issue-482-returns-page-crashes-on-empty-address/)
+    assert.equal(plan.prompt, 'https://github.com/acme/shop/issues/482')
     assert.deepEqual(plan.agentArgs, [])
     assert.equal(plan.vars.owner, 'acme')
     assert.equal(plan.vars.name, 'shop')
@@ -54,7 +52,7 @@ describe('startIssue', () => {
   const issue = sampleIssue()
   const base = { cwd: '/repo', workspaceId: 'w1', issue, repo }
 
-  it('creates the worktree, starts the agent and sends the prompt', async () => {
+  it('creates the worktree, starts the agent and types the issue URL without sending it', async () => {
     const steps = []
     const config = fastConfig({ agent_args: { codex: ['--full-auto'] } })
     const { result, calls } = await withFakeHerdr('happy', () => startIssue({ ...base, agent: 'codex', config, onStep: text => steps.push(text) }))
@@ -63,8 +61,7 @@ describe('startIssue', () => {
       'worktree create',
       'workspace report-metadata',
       'agent start',
-      'agent prompt',
-      'agent wait',
+      'pane send-text',
       'notification show',
     ])
     const [create] = find(calls, 'worktree', 'create')
@@ -79,9 +76,10 @@ describe('startIssue', () => {
     assert.deepEqual(start.slice(3, 7), ['--kind', 'codex', '--pane', 'w9:p1'])
     assert.deepEqual(start.slice(-2), ['--', '--full-auto'])
 
-    const [prompt] = find(calls, 'agent', 'prompt')
-    assert.equal(prompt[2], 'w9:p1')
-    assert.match(prompt[3], /issue #482/)
+    const [typed] = find(calls, 'pane', 'send-text')
+    assert.equal(typed[2], 'w9:p1')
+    assert.equal(typed[3], 'https://github.com/acme/shop/issues/482')
+    assert.equal(find(calls, 'agent', 'wait').length, 0, 'nothing to confirm when nothing was sent')
 
     const [token] = find(calls, 'workspace', 'report-metadata')
     assert.equal(token[2], 'w9')
@@ -89,11 +87,32 @@ describe('startIssue', () => {
 
     assert.equal(result.agent, 'issue-482')
     assert.equal(result.kind, 'codex')
-    assert.equal(result.submitted, true)
+    assert.equal(result.delivery, 'typed')
+    assert.equal(result.submitted, false)
     assert.equal(result.paneId, 'w9:p1')
     assert.equal(result.workspaceId, 'w9')
     assert.equal(result.path, '/tmp/worktrees/repo/issue-482-returns-page-crashes-on-empty-address')
-    assert.deepEqual(steps, ['Creating worktree issue-482-returns-page-crashes-on-empty-address', 'Starting codex in the new worktree', 'Sending issue #482 to codex'])
+    assert.deepEqual(steps, ['Creating worktree issue-482-returns-page-crashes-on-empty-address', 'Starting codex in the new worktree', 'Typing issue #482 into codex'])
+  })
+
+  it('sends the prompt and confirms the agent reacted with submit: true', async () => {
+    const steps = []
+    const config = fastConfig({ submit: true, prompt: 'Work on {url} (branch {branch})' })
+    const { result, calls } = await withFakeHerdr('happy', () => startIssue({ ...base, agent: 'codex', config, onStep: text => steps.push(text) }))
+    assert.deepEqual(commandsOf(calls), ['worktree create', 'workspace report-metadata', 'agent start', 'agent prompt', 'agent wait', 'notification show'])
+    const [prompt] = find(calls, 'agent', 'prompt')
+    assert.equal(prompt[2], 'w9:p1')
+    assert.equal(prompt[3], 'Work on https://github.com/acme/shop/issues/482 (branch issue-482-returns-page-crashes-on-empty-address)')
+    assert.equal(result.delivery, 'submitted')
+    assert.equal(result.submitted, true)
+    assert.equal(find(calls, 'pane', 'send-text').length, 0)
+    assert.ok(steps.includes('Sending issue #482 to codex'))
+  })
+
+  it('types multi-line prompts as one line, since a newline would send them', async () => {
+    const config = fastConfig({ prompt: 'Look at {url}\n\nthen wait for me' })
+    const { calls } = await withFakeHerdr('happy', () => startIssue({ ...base, agent: 'codex', config }))
+    assert.equal(find(calls, 'pane', 'send-text')[0][3], 'Look at https://github.com/acme/shop/issues/482 then wait for me')
   })
 
   it('passes base, no-focus and trust-repository through, and uses --cwd without a workspace', async () => {
@@ -135,7 +154,7 @@ describe('startIssue', () => {
 
   it('accepts a trust prompt when the agent starts blocked', async () => {
     const steps = []
-    const { result, calls } = await withFakeHerdr('not-ready', () => startIssue({ ...base, agent: 'claude', config: fastConfig(), onStep: text => steps.push(text) }))
+    const { result, calls } = await withFakeHerdr('not-ready', () => startIssue({ ...base, agent: 'claude', config: fastConfig({ submit: true }), onStep: text => steps.push(text) }))
     const commands = commandsOf(calls)
     assert.equal(find(calls, 'agent', 'start').length, 1)
     assert.ok(commands.includes('agent read'))
@@ -176,7 +195,7 @@ describe('startIssue', () => {
   })
 
   it('re-sends Enter when the agent did not react to the prompt', async () => {
-    const { result, calls } = await withFakeHerdr('prompt-swallowed', () => startIssue({ ...base, agent: 'codex', config: fastConfig() }))
+    const { result, calls } = await withFakeHerdr('prompt-swallowed', () => startIssue({ ...base, agent: 'codex', config: fastConfig({ submit: true }) }))
     const sendKeys = find(calls, 'agent', 'send-keys')
     assert.equal(sendKeys.length, 1)
     assert.equal(sendKeys[0][3], 'enter')

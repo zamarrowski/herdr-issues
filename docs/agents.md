@@ -84,12 +84,17 @@ into a blocked agent, and the plugin does not work around that.
 
 ## Delivering the prompt
 
-`herdr agent prompt` writes the text and Enter through the pane's bracketed-paste mode and reports
-success when both were written, which is not proof that the agent started a turn. The plugin then
-waits `timeouts.submit_check_ms` for the agent to become *working* or *blocked*. If nothing happens
-(an agent redraw can swallow the Enter), it sends Enter once more and checks again. The result is
-reported as "prompt sent" or "typed but not confirmed as submitted"; in the second case the prompt is
-in the agent's input box, waiting for your Enter.
+By default the plugin types the prompt (just the issue URL) into the agent's input with
+`herdr pane send-text` and stops there. You land in the new workspace with the URL waiting: add
+context, or nothing, and press Enter. Nothing is sent on your behalf, which also means the agent never
+starts a turn you did not see.
+
+With `"submit": true` the plugin uses `herdr agent prompt`, which writes the text and Enter through
+the pane's bracketed-paste mode and reports success when both were written. That is not proof that the
+agent started a turn, so the plugin then waits `timeouts.submit_check_ms` for the agent to become
+*working* or *blocked*. If nothing happens (an agent redraw can swallow the Enter), it sends Enter once
+more and checks again. The result is reported as "sent, the agent is working" or "sent but not
+confirmed"; in the second case the prompt is in the agent's input box, waiting for your Enter.
 
 ## Talking to the agent later
 

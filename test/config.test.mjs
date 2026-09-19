@@ -51,6 +51,8 @@ describe('validate', () => {
     assert.ok(warnings.some(w => w.includes('timeouts.prompt_ms')))
     assert.ok(warnings.some(w => w.includes('trust_prompt_pattern')))
     assert.ok(warnings.some(w => w.includes('"agent" does not look like')))
+    assert.ok(validate({ prompt: 'a\nb' }).some(w => w.includes('line breaks')))
+    assert.deepEqual(validate({ prompt: 'a\nb', submit: true }), [])
   })
   it('rejects non-objects', () => {
     assert.deepEqual(validate([1]), ['config.json must contain a JSON object'])

@@ -67,7 +67,8 @@ if (!interactive) {
       if (result.workspaceId) console.log(`✓ workspace ${result.workspaceId} (${result.label})`)
       if (result.paneId) console.log(`✓ pane ${result.paneId}`)
       if (result.skipped === 'already_open') console.log('! the worktree was already open; no agent started')
-      if (result.agent) console.log(`${result.submitted ? '✓' : '!'} agent ${result.agent} (${result.kind}) — prompt ${result.submitted ? 'sent, the agent is working' : 'typed but not confirmed as submitted'}`)
+      if (result.agent && result.delivery === 'typed') console.log(`✓ agent ${result.agent} (${result.kind}) — issue typed into its input; add context and press Enter there to send it`)
+      else if (result.agent) console.log(`${result.submitted ? '✓' : '!'} agent ${result.agent} (${result.kind}) — prompt ${result.submitted ? 'sent, the agent is working' : 'sent but not confirmed as submitted; check its pane'}`)
     }
   } catch (error) {
     console.error(`✗ ${error.message}`)

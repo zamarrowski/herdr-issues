@@ -54,18 +54,25 @@ Highest first:
 
 | Key | Type | Default | Description |
 | --- | --- | --- | --- |
-| `prompt` | template | see below | The text sent to the agent with `herdr agent prompt`. |
+| `prompt` | template | `"{url}"` | The text typed into the agent. See below. |
+| `submit` | boolean | `false` | Press Enter after typing the prompt (`herdr agent prompt`). `false` types it with `herdr pane send-text` and leaves it in the agent's input, so you can add context before sending. |
 | `notify` | boolean | `true` | Show a herdr toast (`herdr notification show`) when the agent has the issue. |
 | `limit` | number | `100` | Maximum number of issues listed (`gh issue list --limit`). |
 
-Default prompt:
+The default prompt is the issue URL and nothing else. Every agent knows what to do with a GitHub
+issue URL, and since it is typed but not sent you can complete the sentence before pressing Enter:
+"…, read the comments first", "…, just write a plan". Issue bodies are never pasted: the agent reads
+the issue itself, which keeps long issues out of its input.
 
-```
-Work on GitHub issue #{number} ({url}): "{title}". Read the issue and its comments first with `gh issue view {number} --comments`, then implement it in this worktree (branch {branch}).
-```
+With `"submit": false` (the default) the prompt is typed as a single line, because a newline would send
+it: line breaks in the template become spaces, and the setup popup warns about them. A prompt that
+should be sent as written, line breaks included, needs `"submit": true`.
 
-It deliberately tells the agent to read the issue with `gh` instead of pasting the body: the agent gets
-the comments too, and long issues do not flood its input. Any agent with shell access can follow it.
+If the agent you use cannot open URLs (no web tool, or a private repository), tell it to use `gh`:
+
+```json
+{ "prompt": "Work on {url}. Read it with `gh issue view {number} --comments` first.", "submit": true }
+```
 
 ### Timeouts
 
@@ -146,13 +153,15 @@ Always branch from the remote default branch and hand issues to Codex in full-au
 }
 ```
 
-Short branch names, a prompt that asks for a plan first, and a longer worktree timeout for a big repo:
+Short branch names, a prompt that asks for a plan first and is sent straight away, and a longer
+worktree timeout for a big repo:
 
 ```json
 {
   "branch": "gh-{number}",
   "slug_max": 20,
   "prompt": "Issue #{number}: {title} ({url}). Read it with `gh issue view {number} --comments`, write a short plan, wait for my OK, then implement it on branch {branch}.",
+  "submit": true,
   "timeouts": { "worktree_ms": 600000 }
 }
 ```

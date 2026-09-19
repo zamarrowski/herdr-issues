@@ -19,11 +19,12 @@ herdr-issues keeps its footprint small and inspectable:
   `HERDR_PLUGIN_CONFIG_DIR` when you save a default agent or create it from the setup popup, and your
   herdr `config.toml` only when you explicitly press `k`/`u` in the setup popup or run
   `setup.mjs --write-keys` / `--remove-keys` (a one-time backup is kept next to it).
-- **What it sends to agents:** the rendered `prompt` template, containing the issue number, URL, title
-  and branch. Issue bodies and comments are never pasted into the agent; the prompt asks the agent to
-  read them with `gh`. The only key ever pressed on an agent's behalf is Enter, and only while the
-  agent is blocked on a screen matching `trust_prompt_pattern` (see [docs/agents.md](docs/agents.md));
-  set `auto_accept_trust_prompt` to `false` to disable that.
+- **What it sends to agents:** the rendered `prompt` template, by default just the issue URL, typed
+  into the agent's input and left there for you to send (`"submit": true` sends it). Issue bodies and
+  comments are never pasted into the agent. The only key ever pressed on an agent's behalf is Enter:
+  when `submit` is on, to send the prompt; and while the agent is blocked on a screen matching
+  `trust_prompt_pattern` (see [docs/agents.md](docs/agents.md)), unless `auto_accept_trust_prompt` is
+  `false`.
 
 Issue titles flow into branch names, workspace labels and agent names after sanitisation
 (`lib/config.mjs`), and into the prompt verbatim. Treat issues from repositories you do not control

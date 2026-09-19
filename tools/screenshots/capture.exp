@@ -54,7 +54,7 @@ switch $scene {
     sleep 0.3
     send "y"
     expect {
-      -re {is on #482} {}
+      -re {(typed in|is on #482)} {}
       eof { fail "popup exited before finishing" }
       timeout { fail "timeout waiting for the start flow" }
     }

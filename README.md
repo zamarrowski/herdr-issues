@@ -23,8 +23,9 @@ Press `s` on an issue, confirm, and watch it happen:
 </table>
 
 herdr creates a worktree on a branch named after the issue, opens it as a workspace, starts your agent
-in it and sends it the issue. The popup closes and you land in the new workspace with the agent already
-reading the issue.
+in it and types the issue URL into its input. The popup closes and you land in the new workspace with
+the URL waiting in the agent: add whatever context you want and press Enter, or set `"submit": true`
+in the config and let the plugin send it.
 
 ## What it does
 
@@ -33,8 +34,9 @@ reading the issue.
   (headings, lists, task lists, syntax-highlighted code blocks, quotes, links, `#123` and
   `@mentions`), `o` opens the issue in the browser. The last list is cached per repository so the popup paints instantly and
   refreshes behind.
-- **Start.** One key turns an issue into a worktree, a herdr workspace, a running agent and a prompt.
-  A confirmation screen shows exactly what is about to happen: agent, branch, workspace label, prompt.
+- **Start.** One key turns an issue into a worktree, a herdr workspace and a running agent with the
+  issue URL typed into its input, ready for your Enter. A confirmation screen shows exactly what is about
+  to happen: agent, branch, workspace label, prompt.
 - **Any agent.** By default the plugin uses the agent already running in the pane you opened the popup
   from. Otherwise it asks, with the list herdr supports. Set a default once, or pass extra arguments
   per agent kind (`--full-auto`, `--add-dir …`).
@@ -209,7 +211,8 @@ on macOS and Linux). Create it from [`config.example.json`](config.example.json)
 | `branch` | `"issue-{number}-{slug}"` | branch of the new worktree |
 | `base` | `""` | base ref for the branch, e.g. `"origin/main"` (empty: herdr's default, the current HEAD) |
 | `label` | `"#{number} {title}"` | workspace label, cut to `label_max` |
-| `prompt` | see example | what the agent receives |
+| `prompt` | `"{url}"` | what is typed into the agent |
+| `submit` | `false` | press Enter for you; `false` leaves the prompt in the agent's input |
 | `focus` | `true` | focus the new workspace |
 | `notify` | `true` | herdr toast when the agent has the issue |
 | `workspace_token` | `true` | publish `$issue` for the sidebar |
@@ -232,8 +235,10 @@ Everything goes through the herdr CLI, so anything you could do by hand happens 
 2. `herdr agent start issue-<n> --kind <agent> --pane <new pane>`. If the agent shows a first-run
    dialog such as "do you trust the files in this folder?", the plugin accepts it and waits until the
    agent is idle.
-3. `herdr agent prompt` with the rendered prompt. herdr reports the keystrokes, not the turn, so the
-   plugin checks that the agent actually started working and re-sends Enter once if it did not.
+3. `herdr pane send-text` types the rendered prompt, by default just the issue URL, into the agent's
+   input and leaves it there: add context and press Enter. With `"submit": true` the plugin uses
+   `herdr agent prompt` instead; herdr reports the keystrokes, not the turn, so the plugin then checks
+   that the agent actually started working and re-sends Enter once if it did not.
 4. A toast, and an `issue` token on the workspace.
 
 The agent is named `issue-<n>`, so you can talk to it later from any pane:

@@ -109,6 +109,9 @@ switch (`${group} ${command}`) {
   case 'agent send-keys':
     ok({ type: 'ok' })
     break
+  case 'pane send-text':
+    ok({ type: 'ok' })
+    break
   case 'agent prompt':
     ok({ type: 'agent_prompted', agent: { name: args[2], agent_status: 'working' } })
     break

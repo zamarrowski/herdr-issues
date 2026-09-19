@@ -17,7 +17,8 @@ First public release.
   fetched by the manifest build step and optional at runtime; `m` shows the raw text); filter with `/`;
   include closed issues; open in the browser; per-repository cache so the popup paints instantly.
 - Start flow: `herdr worktree create` on a branch named after the issue, `herdr agent start` of any
-  agent kind herdr supports, `herdr agent prompt` with a configurable prompt, a toast and an `issue`
+  agent kind herdr supports, the issue URL typed into the agent's input for you to complete and send
+  (`"submit": true` sends a configurable prompt with `herdr agent prompt`), a toast and an `issue`
   workspace token for the sidebar. Falls back to opening the worktree when the branch exists and leaves
   the pane alone when the worktree is already open.
 - Agent selection: the agent in the focused pane by default, a picker otherwise, `d` to save a default;
