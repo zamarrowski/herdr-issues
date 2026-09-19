@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="936" height="676" viewBox="0 0 936 676" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="15">
+<rect width="936" height="676" rx="12" fill="#1e2127" stroke="#3b4048"/>
+<path d="M12 0h912a12 12 0 0 1 12 12v28H0V12A12 12 0 0 1 12 0z" fill="#2b303b"/>
+<circle cx="22" cy="20" r="6.5" fill="#ff5f57"/>
+<circle cx="44" cy="20" r="6.5" fill="#febc2e"/>
+<circle cx="66" cy="20" r="6.5" fill="#28c840"/>
+<text x="468" y="25" text-anchor="middle" fill="#9da5b4" font-size="13">Issues · acme/shop</text>
+<text x="18.0" y="73" textLength="63.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4" font-weight="bold"> Issues</text>
+<text x="81.0" y="73" textLength="108.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4" opacity="0.55"> · acme/shop</text>
+<text x="693.0" y="73" textLength="225.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4" opacity="0.55">12 open · updated 0m ago </text>
+<text x="18.0" y="93" textLength="900.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4" opacity="0.55">────────────────────────────────────────────────────────────────────────────────────────────────────</text>
+<text x="27.0" y="113" textLength="9.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#56b6c2">›</text>
+<text x="45.0" y="113" textLength="36.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#98c379">#482</text>
+<text x="90.0" y="113" textLength="333.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4" font-weight="bold">Returns page crashes on empty address</text>
+<text x="612.0" y="113" textLength="198.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#e5c07b">bug, p1               </text>
+<text x="819.0" y="113" textLength="45.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#56b6c2">@ana </text>
+<text x="873.0" y="113" textLength="36.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4" opacity="0.55">  2h</text>
+<text x="45.0" y="133" textLength="36.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#98c379">#479</text>
+<text x="81.0" y="133" textLength="531.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4"> Add CSV export to the refunds table                       </text>
+<text x="612.0" y="133" textLength="198.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#e5c07b">feature               </text>
+<text x="873.0" y="133" textLength="36.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4" opacity="0.55">  1d</text>
+<text x="45.0" y="153" textLength="36.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#98c379">#477</text>
+<text x="81.0" y="153" textLength="522.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4"> Checkout totals ignore the coupon when the cart has a gi…</text>
+<text x="612.0" y="153" textLength="198.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#e5c07b">bug, payments         </text>
+<text x="819.0" y="153" textLength="45.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#56b6c2">@luis</text>
+<text x="873.0" y="153" textLength="36.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4" opacity="0.55">  1d</text>
+<text x="45.0" y="173" textLength="36.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#98c379">#471</text>
+<text x="81.0" y="173" textLength="531.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4"> Flaky test: checkout totals with coupons                  </text>
+<text x="612.0" y="173" textLength="198.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#e5c07b">tests                 </text>
+<text x="873.0" y="173" textLength="36.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4" opacity="0.55">  3d</text>
+<text x="45.0" y="193" textLength="36.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#98c379">#468</text>
+<text x="81.0" y="193" textLength="531.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4"> Document the webhook retry policy                         </text>
+<text x="612.0" y="193" textLength="198.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#e5c07b">docs, good first issue</text>
+<text x="873.0" y="193" textLength="36.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4" opacity="0.55">  4d</text>
+<text x="45.0" y="213" textLength="36.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#98c379">#465</text>
+<text x="81.0" y="213" textLength="531.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4"> Order search should match SKUs                            </text>
+<text x="612.0" y="213" textLength="198.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#e5c07b">feature               </text>
+<text x="819.0" y="213" textLength="45.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#56b6c2">@ana </text>
+<text x="873.0" y="213" textLength="36.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4" opacity="0.55">  6d</text>
+<text x="45.0" y="233" textLength="36.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#98c379">#460</text>
+<text x="81.0" y="233" textLength="531.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4"> Upgrade CI to Node 22                                     </text>
+<text x="612.0" y="233" textLength="198.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#e5c07b">chore                 </text>
+<text x="873.0" y="233" textLength="36.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4" opacity="0.55">  8d</text>
+<text x="45.0" y="253" textLength="36.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#98c379">#452</text>
+<text x="81.0" y="253" textLength="531.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4"> Rate-limit password reset emails                          </text>
+<text x="612.0" y="253" textLength="198.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#e5c07b">security              </text>
+<text x="819.0" y="253" textLength="45.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#56b6c2">@luis</text>
+<text x="873.0" y="253" textLength="36.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4" opacity="0.55"> 12d</text>
+<text x="45.0" y="273" textLength="36.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#98c379">#448</text>
+<text x="81.0" y="273" textLength="531.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4"> Dark mode toggle flickers on first paint                  </text>
+<text x="612.0" y="273" textLength="198.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#e5c07b">bug, ui               </text>
+<text x="873.0" y="273" textLength="36.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4" opacity="0.55"> 15d</text>
+<text x="45.0" y="293" textLength="36.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#98c379">#441</text>
+<text x="81.0" y="293" textLength="531.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4"> Serve product images as WebP                              </text>
+<text x="612.0" y="293" textLength="198.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#e5c07b">feature, performance  </text>
+<text x="873.0" y="293" textLength="36.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4" opacity="0.55"> 20d</text>
+<text x="45.0" y="313" textLength="36.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#98c379">#437</text>
+<text x="81.0" y="313" textLength="531.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4"> Add --json to the CLI export command                      </text>
+<text x="612.0" y="313" textLength="198.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#e5c07b">feature               </text>
+<text x="873.0" y="313" textLength="36.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4" opacity="0.55"> 25d</text>
+<text x="45.0" y="333" textLength="36.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#98c379">#430</text>
+<text x="81.0" y="333" textLength="531.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4"> Localise currency formatting for CHF                      </text>
+<text x="612.0" y="333" textLength="198.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#e5c07b">bug, i18n             </text>
+<text x="873.0" y="333" textLength="36.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4" opacity="0.55"> 1mo</text>
+<text x="18.0" y="653" textLength="828.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4" opacity="0.55"> Enter read · s start · o browser · r refresh · c show closed · / filter · j/k move · q quit</text>
+</svg>

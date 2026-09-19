@@ -1,0 +1,72 @@
+#!/usr/bin/expect -f
+# Drives one popup in a pseudo-terminal of a fixed size and records its output.
+#   capture.exp <scene> <cols> <rows> <transcript> <command...>
+# Scenes: browser, detail, picker, confirm, progress. The last frame in the transcript is the screenshot,
+# so every scene ends by terminating the popup (it repaints nothing on SIGTERM) or by letting it close.
+set scene [lindex $argv 0]
+set cols [lindex $argv 1]
+set rows [lindex $argv 2]
+set transcript [lindex $argv 3]
+set command [lrange $argv 4 end]
+set timeout 30
+log_user 0
+log_file -a -noappend $transcript
+
+proc fail {message} { puts "capture: $message"; exit 1 }
+# Note the multi-line braces: expect treats a single-line {…} argument as one glob pattern.
+proc await {pattern what} {
+  expect {
+    -re $pattern {}
+    timeout { fail "timeout waiting for $what" }
+    eof { fail "popup exited while waiting for $what" }
+  }
+}
+
+spawn sh -c "stty rows $rows cols $cols; exec [join $command " "]"
+# The header of a fresh frame: the list has been fetched (not the cached one) and painted.
+await {open · updated 0m ago} "the issue list"
+sleep 0.6
+
+switch $scene {
+  browser {}
+  detail {
+    send "\r"
+    await {reproduce} "the rendered issue"
+    sleep 0.6
+  }
+  picker {
+    send "s"
+    await {Which agent} "the agent picker"
+    sleep 0.3
+    send "\x1b\[B"
+    sleep 0.3
+    send "\x1b\[B"
+    sleep 0.5
+  }
+  confirm {
+    send "s"
+    await {d start and make} "the confirmation"
+    sleep 0.5
+  }
+  progress {
+    send "s"
+    await {d start and make} "the confirmation"
+    sleep 0.3
+    send "y"
+    expect {
+      -re {is on #482} {}
+      eof { fail "popup exited before finishing" }
+      timeout { fail "timeout waiting for the start flow" }
+    }
+    sleep 0.8
+    catch { expect eof }
+    exit 0
+  }
+  default { fail "unknown scene $scene" }
+}
+
+exec kill -TERM [exp_pid]
+expect {
+  eof {}
+  timeout { puts "capture: popup did not exit on SIGTERM ($scene)" }
+}

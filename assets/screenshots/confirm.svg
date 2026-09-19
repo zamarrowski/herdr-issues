@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="556" viewBox="0 0 900 556" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="15">
+<rect width="900" height="556" rx="12" fill="#1e2127" stroke="#3b4048"/>
+<path d="M12 0h876a12 12 0 0 1 12 12v28H0V12A12 12 0 0 1 12 0z" fill="#2b303b"/>
+<circle cx="22" cy="20" r="6.5" fill="#ff5f57"/>
+<circle cx="44" cy="20" r="6.5" fill="#febc2e"/>
+<circle cx="66" cy="20" r="6.5" fill="#28c840"/>
+<text x="450" y="25" text-anchor="middle" fill="#9da5b4" font-size="13">Start issue · acme/shop</text>
+<text x="18.0" y="73" textLength="108.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4" font-weight="bold"> Start issue</text>
+<text x="126.0" y="73" textLength="108.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4" opacity="0.55"> · acme/shop</text>
+<text x="18.0" y="93" textLength="864.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4" opacity="0.55">────────────────────────────────────────────────────────────────────────────────────────────────</text>
+<text x="27.0" y="113" textLength="36.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4" font-weight="bold">#482</text>
+<text x="63.0" y="113" textLength="351.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4"> Returns page crashes on empty address</text>
+<text x="18.0" y="133" textLength="135.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4" opacity="0.55"> bug, p1 · @ana</text>
+<text x="27.0" y="173" textLength="90.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4" opacity="0.55">Agent     </text>
+<text x="117.0" y="173" textLength="54.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4"> codex</text>
+<text x="171.0" y="173" textLength="216.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4" opacity="0.55">  (running in your pane)</text>
+<text x="27.0" y="193" textLength="90.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4" opacity="0.55">Branch    </text>
+<text x="117.0" y="193" textLength="441.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4"> issue-482-returns-page-crashes-on-empty-address</text>
+<text x="27.0" y="213" textLength="90.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4" opacity="0.55">Workspace </text>
+<text x="117.0" y="213" textLength="378.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4"> #482 Returns page crashes on empty addr…</text>
+<text x="27.0" y="233" textLength="90.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4" opacity="0.55">Agent name</text>
+<text x="117.0" y="233" textLength="99.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4"> issue-482</text>
+<text x="27.0" y="253" textLength="90.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4" opacity="0.55">Prompt    </text>
+<text x="117.0" y="253" textLength="756.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4"> Work on GitHub issue #482 (https://github.com/acme/shop/issues/482): "Returns page…</text>
+<text x="18.0" y="533" textLength="675.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4" opacity="0.55"> y start · d start and make codex the default · a change agent · Esc cancel</text>
+</svg>

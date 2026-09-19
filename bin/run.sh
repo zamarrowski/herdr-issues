@@ -39,4 +39,7 @@ if [ -z "$node_bin" ]; then
   exit 1
 fi
 
-exec "$node_bin" "$root/$script" "$@"
+case $script in
+  /*) exec "$node_bin" "$script" "$@" ;;
+  *) exec "$node_bin" "$root/$script" "$@" ;;
+esac

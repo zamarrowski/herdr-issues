@@ -9,28 +9,18 @@ A [herdr](https://herdr.dev) plugin that shows the GitHub issues of the reposito
 any of them to a coding agent in its own git worktree. Claude Code, Codex, Gemini CLI, Pi, OpenCode,
 Cursor, Copilot, Droid, Amp… whatever herdr can start, this plugin can hand an issue to.
 
-```
- Issues · acme/shop                                        12 open · updated 3m ago
- ──────────────────────────────────────────────────────────────────────────────────
- › #482 Returns page crashes on empty address          bug, p1      @zamarrowski   2h
-   #479 Add CSV export to the refunds table            feature                     1d
-   #471 Flaky test: checkout totals with coupons       bug, tests   @ana           3d
+<p align="center">
+  <img src="assets/screenshots/browser.svg" alt="The Issues popup: the open issues of acme/shop with labels, assignees and age, one selected" width="100%">
+</p>
 
- Enter read · s start · o browser · r refresh · c show closed · / filter · j/k move · q quit
-```
+Press `s` on an issue, confirm, and watch it happen:
 
-Press `s` on an issue and confirm:
-
-```
- Starting #482                                                            acme/shop
- ──────────────────────────────────────────────────────────────────────────────────
- Returns page crashes on empty address
-
- ✓ Creating worktree issue-482-returns-page-crashes-on-empty-address
- ✓ Starting codex in the new worktree
- ✓ Sending issue #482 to codex
- ✓ codex is on #482 in "#482 Returns page crashes on empty addr…"
-```
+<table>
+  <tr>
+    <td width="50%"><img src="assets/screenshots/confirm.svg" alt="Confirmation screen: agent codex (running in your pane), branch issue-482-returns-page-crashes-on-empty-address, workspace label, agent name and prompt" width="100%"></td>
+    <td width="50%"><img src="assets/screenshots/progress.svg" alt="Progress screen: creating the worktree, starting codex, sending issue #482, done" width="100%"></td>
+  </tr>
+</table>
 
 herdr creates a worktree on a branch named after the issue, opens it as a workspace, starts your agent
 in it and sends it the issue. The popup closes and you land in the new workspace with the agent already
@@ -131,6 +121,12 @@ pane's directory (through `gh`, so forks and `gh repo set-default` are honoured)
 | `c` | include closed issues |
 | `r` | refresh from GitHub |
 | `q` / `Esc` | quit |
+
+Reading an issue renders its Markdown, code blocks included:
+
+<p align="center">
+  <img src="assets/screenshots/detail.svg" alt="Issue #482 rendered in the popup: headings, a numbered list, a syntax-highlighted JavaScript stack trace, bold text and an issue reference" width="100%">
+</p>
 
 ### Starting
 

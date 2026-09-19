@@ -29,6 +29,7 @@ First public release.
 - `config.json` with templates for branch, label, agent name and prompt, base ref, timeouts and
   environment overrides; documented in `docs/configuration.md` and `docs/agents.md`.
 - Test suite on `node:test` with a scripted stand-in for the herdr CLI; CI on macOS and Linux.
+- README screenshots generated from the real popups (`tools/screenshots/make.sh`).
 
 [Unreleased]: https://github.com/zamarrowski/herdr-issues/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/zamarrowski/herdr-issues/releases/tag/v0.1.0

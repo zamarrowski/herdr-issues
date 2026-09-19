@@ -31,6 +31,10 @@ Highest precedence first:
 Press `d` instead of `y` on the confirmation screen to save the current choice as `agent` in
 `config.json`.
 
+<p align="center">
+  <img src="../assets/screenshots/picker.svg" alt="The agent picker: the kinds herdr can start, codex highlighted, a filter field on top" width="90%">
+</p>
+
 ## Extra arguments
 
 `agent_args` in `config.json` maps a kind to an array of arguments. herdr passes them to the agent

@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="936" height="676" viewBox="0 0 936 676" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="15">
+<rect width="936" height="676" rx="12" fill="#1e2127" stroke="#3b4048"/>
+<path d="M12 0h912a12 12 0 0 1 12 12v28H0V12A12 12 0 0 1 12 0z" fill="#2b303b"/>
+<circle cx="22" cy="20" r="6.5" fill="#ff5f57"/>
+<circle cx="44" cy="20" r="6.5" fill="#febc2e"/>
+<circle cx="66" cy="20" r="6.5" fill="#28c840"/>
+<text x="468" y="25" text-anchor="middle" fill="#9da5b4" font-size="13">Issues · acme/shop · #482</text>
+<text x="18.0" y="73" textLength="54.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4" font-weight="bold"> Issue</text>
+<text x="72.0" y="73" textLength="108.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4" opacity="0.55"> · acme/shop</text>
+<text x="873.0" y="73" textLength="45.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4" opacity="0.55">1/12 </text>
+<text x="18.0" y="93" textLength="900.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4" opacity="0.55">────────────────────────────────────────────────────────────────────────────────────────────────────</text>
+<text x="27.0" y="113" textLength="378.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4" font-weight="bold">#482 Returns page crashes on empty address</text>
+<text x="27.0" y="133" textLength="432.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4" opacity="0.55">OPEN · by marta · opened 2d ago · updated 2h ago</text>
+<text x="27.0" y="153" textLength="135.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#e5c07b">labels: bug, p1</text>
+<text x="27.0" y="173" textLength="135.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#56b6c2">assignees: @ana</text>
+<text x="27.0" y="193" textLength="351.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4" opacity="0.55">https://github.com/acme/shop/issues/482</text>
+<text x="27.0" y="233" textLength="108.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4" font-weight="bold">What happens</text>
+<text x="18.0" y="273" textLength="81.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4"> Opening </text>
+<text x="99.0" y="273" textLength="117.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#e5c07b">/returns/new </text>
+<text x="216.0" y="273" textLength="531.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4">for an order whose shipping address is empty throws inside </text>
+<text x="747.0" y="273" textLength="135.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#e5c07b">AddressSummary </text>
+<text x="882.0" y="273" textLength="36.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4">and</text>
+<text x="18.0" y="293" textLength="252.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4"> the whole page goes blank.</text>
+<text x="27.0" y="333" textLength="162.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4" font-weight="bold">Steps to reproduce</text>
+<text x="18.0" y="373" textLength="225.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4"> 1. Create an order with </text>
+<text x="243.0" y="373" textLength="207.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#e5c07b">shipping_address: null </text>
+<text x="450.0" y="373" textLength="414.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4">(the POS app does this for in-store pickups).</text>
+<text x="18.0" y="393" textLength="378.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4"> 2. Open the returns page for that order.</text>
+<text x="18.0" y="413" textLength="468.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4"> 3. The page renders nothing and the console shows:</text>
+<text x="27.0" y="453" textLength="54.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4" opacity="0.55">    js</text>
+<text x="63.0" y="473" textLength="81.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#56b6c2">TypeError</text>
+<text x="144.0" y="473" textLength="18.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4">: </text>
+<text x="162.0" y="473" textLength="54.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#56b6c2">Cannot</text>
+<text x="216.0" y="473" textLength="153.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4"> read properties </text>
+<text x="369.0" y="473" textLength="18.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c678dd">of</text>
+<text x="396.0" y="473" textLength="36.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#56b6c2">null</text>
+<text x="432.0" y="473" textLength="90.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4"> (reading </text>
+<text x="522.0" y="473" textLength="63.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#98c379">'line1'</text>
+<text x="585.0" y="473" textLength="18.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4">)</text>
+<text x="18.0" y="493" textLength="108.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4">         at </text>
+<text x="126.0" y="493" textLength="126.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#56b6c2">AddressSummary</text>
+<text x="252.0" y="493" textLength="126.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4"> (src/returns/</text>
+<text x="378.0" y="493" textLength="126.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#56b6c2">AddressSummary</text>
+<text x="504.0" y="493" textLength="45.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4">.jsx:</text>
+<text x="549.0" y="493" textLength="18.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#e5c07b">12</text>
+<text x="567.0" y="493" textLength="9.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4">:</text>
+<text x="576.0" y="493" textLength="18.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#e5c07b">31</text>
+<text x="594.0" y="493" textLength="18.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4">)</text>
+<text x="18.0" y="513" textLength="108.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4">         at </text>
+<text x="126.0" y="513" textLength="135.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#56b6c2">renderWithHooks</text>
+<text x="261.0" y="513" textLength="243.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4"> (react-dom.development.js:</text>
+<text x="504.0" y="513" textLength="45.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#e5c07b">16305</text>
+<text x="549.0" y="513" textLength="9.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4">:</text>
+<text x="558.0" y="513" textLength="18.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#e5c07b">18</text>
+<text x="576.0" y="513" textLength="18.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4">)</text>
+<text x="27.0" y="553" textLength="72.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4" font-weight="bold">Expected</text>
+<text x="18.0" y="593" textLength="252.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4"> The page renders and shows </text>
+<text x="270.0" y="593" textLength="198.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4" font-weight="bold">"No shipping address" </text>
+<text x="468.0" y="593" textLength="450.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4">where the summary goes, like the orders page does</text>
+<text x="18.0" y="613" textLength="63.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4"> since </text>
+<text x="81.0" y="613" textLength="36.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#98c379">#455</text>
+<text x="117.0" y="613" textLength="18.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4">.</text>
+<text x="18.0" y="633" textLength="144.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4" opacity="0.55"> ↓ 15 more lines</text>
+<text x="18.0" y="653" textLength="711.0" lengthAdjust="spacingAndGlyphs" xml:space="preserve" fill="#c8ccd4" opacity="0.55"> s start · o browser · m raw text · j/k scroll · space page · Esc back · q quit</text>
+</svg>

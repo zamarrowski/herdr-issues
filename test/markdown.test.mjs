@@ -61,8 +61,8 @@ describe('wrapSegments', () => {
     const lines = wrapSegments(parseInline('one **two three** four five six seven'), 12)
     assert.deepEqual(plain(lines), ['one two', 'three four', 'five six', 'seven'])
     for (const line of lines) assert.ok(visibleWidth(line) <= 12)
-    assert.match(lines[0], /\x1b\[1mtwo\x1b\[0m/, 'style closed at the end of the line')
-    assert.match(lines[1], /^\x1b\[1mthree\x1b\[0m/, 'style reopened on the next line')
+    assert.match(lines[0], /\x1b\[1mtwo\x1b\[0m$/, 'style closed at the end of the line')
+    assert.match(lines[1], /^\x1b\[1mthree \x1b\[0mfour$/, 'style reopened on the next line; the space after a styled word keeps its style')
   })
   it('uses first and rest prefixes and cuts over-long words', () => {
     const lines = wrapSegments(parseInline('abcdefghijkl mn'), 8, { first: '• ', rest: '  ' })

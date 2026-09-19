@@ -28,7 +28,7 @@
   },
   "scripts": {
     "test": "node --test test/*.test.mjs",
-    "check": "node --check lib/*.mjs scripts/*.mjs test/*.mjs test/fixtures/*.mjs",
+    "check": "node --check lib/*.mjs scripts/*.mjs test/*.mjs test/fixtures/*.mjs tools/screenshots/*.mjs",
     "issues": "sh bin/run.sh scripts/issues.mjs",
     "start-issue": "sh bin/run.sh scripts/start.mjs",
     "setup": "sh bin/run.sh scripts/setup.mjs"
