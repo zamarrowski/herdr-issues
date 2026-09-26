@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import { describe, it } from 'node:test'
-import { pickCwd, pickRepo, readContext, resolveTarget } from '../lib/context.mjs'
+import { pickCwd, pickRepo, readContext, repoCandidates, resolveTarget } from '../lib/context.mjs'
 import { tempDir } from './helpers.mjs'
 
 const gitInit = dir => {
@@ -59,5 +59,35 @@ describe('resolveTarget', () => {
     const target = await resolveTarget({ cwd: tempDir(), repo: 'acme/shop', context: {} })
     assert.equal(target.root, null)
     assert.equal(target.repo, 'acme/shop')
+  })
+})
+
+describe('repoCandidates', () => {
+  const workspaces = [
+    { workspace_id: 'w1', worktree: { checkout_path: '/code/shop', is_linked_worktree: false, repo_key: '/code/shop/.git', repo_name: 'shop', repo_root: '/code/shop' } },
+    { workspace_id: 'w2', label: 'no git' },
+    { workspace_id: 'w4', worktree: { checkout_path: '/wt/shop/sc-1', is_linked_worktree: true, repo_key: '/code/shop/.git', repo_name: 'shop', repo_root: '/code/shop' } },
+    { workspace_id: 'w5', worktree: { checkout_path: '/wt/api/x', is_linked_worktree: true, repo_key: '/code/api/.git', repo_name: 'api', repo_root: '/code/api' } },
+  ]
+  it('lists each repository once, sorted, with its main checkout workspace', () => {
+    const { items, preferred } = repoCandidates(workspaces)
+    assert.deepEqual(
+      items.map(item => [item.id, item.root, item.workspaceId]),
+      [
+        ['api', '/code/api', null],
+        ['shop', '/code/shop', 'w1'],
+      ],
+    )
+    assert.equal(preferred, -1)
+  })
+  it('prefers the repository of the workspace or checkout the popup came from', () => {
+    assert.equal(repoCandidates(workspaces, { workspaceId: 'w4' }).preferred, 1)
+    assert.equal(repoCandidates(workspaces, { root: '/wt/api/x' }).preferred, 0)
+  })
+  it('adds the pane checkout when no workspace covers it', () => {
+    const { items, preferred } = repoCandidates(workspaces, { root: '/elsewhere/tool', workspaceId: 'w2' })
+    assert.equal(items[preferred].id, 'tool')
+    assert.equal(items[preferred].workspaceId, 'w2')
+    assert.equal(items.length, 3)
   })
 })

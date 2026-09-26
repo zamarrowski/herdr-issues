@@ -12,7 +12,8 @@ Thanks for taking the time. Bug reports, agent quirks, documentation fixes and f
 
 ## Development setup
 
-You need herdr ≥ 0.9.0, Node.js ≥ 20, git and `gh` (logged in).
+You need herdr ≥ 0.9.0, Node.js ≥ 20, git and `gh` (logged in). A Shortcut token only if you want to
+try the Shortcut tab against a real workspace; the tests use a local fake (`test/fixtures/fake-shortcut.mjs`).
 
 ```sh
 git clone https://github.com/zamarrowski/herdr-issues.git
@@ -46,12 +47,16 @@ Starting an issue needs a running herdr and works from any terminal as long as `
 ## Project layout
 
 ```
-herdr-plugin.toml     manifest: actions (open, start, setup), popups (browser, start, setup), the link handler
+herdr-plugin.toml     manifest: actions (open, start, setup), popups (browser, start, setup), link handlers (GitHub, Shortcut)
 bin/run.sh            finds Node.js and runs a script
 lib/paths.mjs         plugin id, config/state directories
 lib/config.mjs        defaults, config.json loading and validation, templates, agent resolution
 lib/context.mjs       HERDR_PLUGIN_CONTEXT_JSON and which checkout to use
 lib/github.mjs        gh wrapper: repo, issue list/view, URL parsing
+lib/shortcut.mjs      Shortcut REST client (fetch): member, stories, lookups, story refs, token lookup
+lib/sources.mjs       the shared record shape, tabs, reference routing between GitHub and Shortcut
+lib/secrets.mjs       secrets.json (the Shortcut token typed in the popup), mode 0600
+lib/cache.mjs         last list per source and project, and the last tab
 lib/herdr.mjs         herdr CLI wrapper: worktree, agent, notification, metadata
 lib/start.mjs         the start flow (worktree → agent → prompt), agent-agnostic
 lib/launch.mjs        confirm / pick agent / progress screens shared by both popups
@@ -99,7 +104,8 @@ Design rules worth knowing:
 npm test
 ```
 
-Tests use `node:test` and never touch the network, the user's herdr or `~/.config` (`npm ci` once,
+Tests use `node:test` and never touch the network (the Shortcut client talks to a local
+`node:http` fake, `test/fixtures/fake-shortcut.mjs`), the user's herdr or `~/.config` (`npm ci` once,
 so the highlight.js tests can run). herdr is replaced
 by `test/fixtures/fake-herdr`, which records every call and answers according to
 `FAKE_HERDR_SCENARIO` (see the file for the scenarios: `happy`, `branch-exists`, `already-open`,

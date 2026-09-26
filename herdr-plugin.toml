@@ -2,7 +2,7 @@ id = "zamarrowski.issues"
 name = "Issues"
 version = "0.1.0"
 min_herdr_version = "0.9.0"
-description = "Browse the GitHub issues of the current repo in a popup and hand one to any coding agent in its own git worktree"
+description = "Browse GitHub issues and Shortcut stories in a popup and hand one to any coding agent in its own git worktree"
 platforms = ["macos", "linux"]
 
 # Fetches highlight.js, the only dependency, for syntax highlighting in code blocks. herdr runs this
@@ -14,14 +14,14 @@ command = ["npm", "ci", "--omit=dev", "--no-fund", "--no-audit"]
 
 [[actions]]
 id = "open"
-title = "Issues: browse this repo's GitHub issues"
+title = "Issues: browse GitHub issues and Shortcut stories"
 contexts = ["workspace", "tab", "pane"]
 command = ["sh", "-c", "exec \"$HERDR_BIN_PATH\" plugin pane open --plugin zamarrowski.issues --entrypoint browser --focus"]
 
-# From a keybinding it asks for an issue number or URL; from a Ctrl+click on an issue URL it starts that issue.
+# From a keybinding it asks for an issue number, sc-<id> or URL; from a Ctrl+click on an issue or story URL it starts that one.
 [[actions]]
 id = "start"
-title = "Issues: start an issue in a new worktree"
+title = "Issues: start an issue or a story in a new worktree"
 contexts = ["workspace", "tab", "pane"]
 command = ["sh", "-c", "exec \"$HERDR_BIN_PATH\" plugin pane open --plugin zamarrowski.issues --entrypoint start --focus --env \"HERDR_ISSUES_URL=$HERDR_PLUGIN_CLICKED_URL\""]
 
@@ -57,10 +57,16 @@ width = "85%"
 height = "85%"
 command = ["sh", "bin/run.sh", "scripts/setup.mjs"]
 
-# ── Ctrl+click on a GitHub issue URL in any pane ─────────────────────────────
+# ── Ctrl+click on a GitHub issue URL or a Shortcut story URL in any pane ─────
 
 [[link_handlers]]
 id = "github-issue"
 title = "Start this issue in a worktree"
 pattern = "^https://github\\.com/[^/]+/[^/]+/issues/[0-9]+(?:[/?#].*)?$"
+action = "start"
+
+[[link_handlers]]
+id = "shortcut-story"
+title = "Start this story in a worktree"
+pattern = "^https://app\\.shortcut\\.com/[^/]+/story/[0-9]+(?:[/?#].*)?$"
 action = "start"

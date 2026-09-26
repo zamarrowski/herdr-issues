@@ -44,11 +44,11 @@ describe('herdr-plugin.toml', () => {
     assert.ok(top('description'))
   })
 
-  it('has the expected actions, panes and link handler', () => {
+  it('has the expected actions, panes and link handlers', () => {
     assert.deepEqual(actions.map(a => a.id).sort(), ['open', 'setup', 'start'])
     assert.deepEqual(panes.map(p => p.id).sort(), ['browser', 'setup', 'start'])
-    assert.equal(handlers.length, 1)
-    assert.equal(handlers[0].action, 'start')
+    assert.deepEqual(handlers.map(h => h.id), ['github-issue', 'shortcut-story'], 'one link handler per source')
+    for (const handler of handlers) assert.equal(handler.action, 'start')
   })
 
   it('points every action at a declared pane of this plugin', () => {
@@ -72,12 +72,29 @@ describe('herdr-plugin.toml', () => {
   })
 
   it('matches GitHub issue URLs and nothing else with the link handler pattern', () => {
-    const pattern = new RegExp(handlers[0].pattern)
+    const pattern = new RegExp(handlers.find(h => h.id === 'github-issue').pattern)
     assert.ok(pattern.test('https://github.com/acme/shop/issues/482'))
     assert.ok(pattern.test('https://github.com/acme/shop/issues/482#issuecomment-3'))
     assert.ok(!pattern.test('https://github.com/acme/shop/pull/482'))
     assert.ok(!pattern.test('https://github.com/acme/shop/issues'))
     assert.ok(!pattern.test('https://example.com/github.com/acme/shop/issues/1'))
+    assert.ok(!pattern.test('https://app.shortcut.com/acme/story/482'))
+  })
+
+  it('matches Shortcut story URLs and nothing else with the story pattern', () => {
+    const pattern = new RegExp(handlers.find(h => h.id === 'shortcut-story').pattern)
+    assert.ok(pattern.test('https://app.shortcut.com/acme/story/482'))
+    assert.ok(pattern.test('https://app.shortcut.com/acme/story/482/returns-page-crashes'))
+    assert.ok(pattern.test('https://app.shortcut.com/acme/story/482?vc_group_by=day'))
+    assert.ok(!pattern.test('https://app.shortcut.com/acme/epic/12'))
+    assert.ok(!pattern.test('https://app.shortcut.com/acme/iteration/3'))
+    assert.ok(!pattern.test('https://github.com/acme/shop/issues/482'))
+  })
+
+  it('parses what its link handlers match', async () => {
+    const { parseRef } = await import('../lib/sources.mjs')
+    assert.equal(parseRef('https://github.com/acme/shop/issues/482').source, 'github')
+    assert.equal(parseRef('https://app.shortcut.com/acme/story/482/returns-page').source, 'shortcut')
   })
 })
 
@@ -97,5 +114,7 @@ describe('package.json', () => {
     for (const key of Object.keys(DEFAULTS)) assert.ok(key in example, `config.example.json lacks "${key}"`)
     for (const key of Object.keys(example)) assert.ok(key.startsWith('$') || key in DEFAULTS, `config.example.json has unknown "${key}"`)
     assert.deepEqual(example.timeouts, { ...DEFAULTS.timeouts })
+    assert.deepEqual(example.shortcut, { ...DEFAULTS.shortcut })
+    assert.deepEqual(example.tabs, [...DEFAULTS.tabs])
   })
 })

@@ -5,8 +5,9 @@
 [![herdr ≥ 0.9.0](https://img.shields.io/badge/herdr-%E2%89%A5%200.9.0-black)](https://herdr.dev)
 [![Dependencies: highlight.js](https://img.shields.io/badge/dependencies-highlight.js-brightgreen)](package.json)
 
-A [herdr](https://herdr.dev) plugin that shows the GitHub issues of the repository you are in and hands
-any of them to a coding agent in its own git worktree. Claude Code, Codex, Gemini CLI, Pi, OpenCode,
+A [herdr](https://herdr.dev) plugin that shows the GitHub issues of the repository you are in, and the
+stories of your [Shortcut](https://shortcut.com) workspace, and hands any of them to a coding agent in its
+own git worktree. Claude Code, Codex, Gemini CLI, Pi, OpenCode,
 Cursor, Copilot, Droid, Amp… whatever herdr can start, this plugin can hand an issue to.
 
 <p align="center">
@@ -29,7 +30,9 @@ in the config and let the plugin send it.
 
 ## What it does
 
-- **Browse.** Open issues newest first, with labels, assignees and age. `/` filters as you type, `c`
+- **Browse.** Open issues newest first, with labels, assignees and age, in three tabs: **All**,
+  **GitHub** (the repository of your pane) and **Shortcut** (your workspace). `tabs` in the config
+  decides which ones you see. `/` filters as you type, `c`
   includes closed issues, `Enter` shows the description and the comments rendered as Markdown
   (headings, lists, task lists, syntax-highlighted code blocks, quotes, links, `#123` and
   `@mentions`), `o` opens the issue in the browser. The last list is cached per repository so the popup paints instantly and
@@ -40,7 +43,10 @@ in the config and let the plugin send it.
 - **Any agent.** By default the plugin uses the agent already running in the pane you opened the popup
   from. Otherwise it asks, with the list herdr supports. Set a default once, or pass extra arguments
   per agent kind (`--full-auto`, `--add-dir …`).
-- **Ctrl+click.** Any GitHub issue URL in any pane becomes a "start this issue" link.
+- **Shortcut stories.** The Shortcut tab asks for an API token the first time and remembers it. Stories
+  show their workflow state, tasks and comments, and start on an `sc-482-…` branch, which Shortcut links
+  to the story. A story belongs to no repository, so the plugin asks which one to work in.
+- **Ctrl+click.** Any GitHub issue URL or Shortcut story URL in any pane becomes a "start this" link.
 - **Scriptable.** The same flow runs from a shell, a script or another agent: `start.mjs 482 --agent
   codex`, JSON output included.
 - **Sidebar label.** The new workspace carries an `issue` token (`#482`) you can show in the herdr sidebar.
@@ -55,6 +61,8 @@ in the config and let the plugin send it.
   `npm ci` to fetch highlight.js
 - **`gh`**, the [GitHub CLI](https://cli.github.com), logged in (`gh auth login`)
 - **git**, and a local checkout of the repository (starting an issue creates a worktree of it)
+- For Shortcut stories: a Shortcut API token (Shortcut → Settings → Your account → API Tokens). The
+  Shortcut tab asks for it; `gh` is only needed for the GitHub side.
 - macOS or Linux
 
 ## Install
@@ -107,21 +115,29 @@ herdr plugin link "$PWD/herdr-issues"
 
 ## Use
 
-Open the popup from a pane inside a GitHub repository, with `ctrl+b` `i` or
-`herdr plugin action invoke zamarrowski.issues.open`. The repository is inferred from the focused
-pane's directory (through `gh`, so forks and `gh repo set-default` are honoured).
+Open the popup with `ctrl+b` `i` or `herdr plugin action invoke zamarrowski.issues.open`. The GitHub
+repository is inferred from the focused pane's directory (through `gh`, so forks and
+`gh repo set-default` are honoured); outside a repository the GitHub tab says so and the other tabs
+keep working.
+
+The popup has three tabs, **All**, **GitHub** and **Shortcut**, and opens on the last one you used.
+Hide the ones you do not want with `tabs` in `config.json`, for example `"tabs": ["github"]` for
+GitHub only, or `"tabs": ["shortcut", "github"]` to have Shortcut first and no All tab.
 
 ### Browsing
 
 | Key | Action |
 | --- | --- |
+| `Tab` / `Shift+Tab`, `1` `2` `3` | switch tab |
 | `j` `k` / arrows, `g` `G` | move |
 | `Enter` / `l` | read the issue: description and comments (`j` `k` / `space` scroll, `m` raw text instead of rendered Markdown, `Esc` back) |
 | `s` | **start** the issue (confirmation first) |
 | `o` | open the issue in the browser |
-| `/` | filter by number, title, label, assignee or author; `Esc` clears |
+| `/` | filter by number, title, label, assignee, author, story state or type; `Esc` clears |
 | `c` | include closed issues |
-| `r` | refresh from GitHub |
+| `r` | refresh |
+| `f` | Shortcut owner / requester filter (Shortcut and All tabs), remembered between popups |
+| `,` | Shortcut settings (Shortcut tab): replace or remove the token |
 | `q` / `Esc` | quit |
 
 Reading an issue renders its Markdown, code blocks included:
@@ -130,28 +146,60 @@ Reading an issue renders its Markdown, code blocks included:
   <img src="assets/screenshots/detail.svg" alt="Issue #482 rendered in the popup: headings, a numbered list, a syntax-highlighted JavaScript stack trace, bold text and an issue reference" width="100%">
 </p>
 
+### Shortcut
+
+The first time you open the Shortcut tab it asks for an API token: create one in Shortcut under
+Settings → Your account → API Tokens, paste it and press Enter. The plugin checks it against the API
+(`@ana in acme`) and saves it in `secrets.json` in the plugin config directory, readable by you only.
+From then on the tab lists the stories of the workspace that are not done or archived, newest updated
+first, with their workflow state.
+
+A whole workspace is usually too much, so `f` filters by **owner** and **requester**: pick *anyone*,
+*me* or any member of the workspace (type to find them). The filter is part of the Shortcut search, so
+nothing is lost to `limit`, and it is remembered: the next popup opens with the same filter (*me*
+follows the token, whoever it belongs to). The header shows the active filter, and `x` on the filter
+screen clears it.
+
+`,` opens the Shortcut settings, where `e` replaces the token and `x` removes it.
+
+If you already manage the token elsewhere, export `SHORTCUT_API_TOKEN` instead: it takes precedence
+and the popup never asks. To list one team's stories only, or to change the search, set
+`shortcut.team` or `shortcut.query` (see [docs/configuration.md](docs/configuration.md#shortcut)).
+
+A story is linked to no repository, so starting one first asks which repository to create the
+worktree in. The list holds every repository open as a herdr workspace, with the repository of the
+pane you opened the popup from preselected: press Enter to take it. The branch is
+`sc-482-<slug>`, which Shortcut's VCS integration attaches to the story.
+
+The prompt is the story URL, like for GitHub. An agent can only open it with access to Shortcut,
+such as Shortcut's MCP server; see [docs/configuration.md](docs/configuration.md#shortcut) for a
+prompt that works without it.
+
 ### Starting
 
-The confirmation screen shows the agent, the branch, the workspace label and the prompt:
+The confirmation screen shows the agent, the branch, the workspace label and the prompt (and the
+repository, for a story):
 
 | Key | Action |
 | --- | --- |
 | `y` | start |
 | `d` | start and save this agent as the default in `config.json` |
 | `a` | choose another agent (arrows move, letters filter, `Enter` picks) |
+| `r` | choose another repository (stories) |
 | `Esc` | cancel |
 
 When it finishes the popup closes and the new workspace is focused. If something fails, the failing
 step is shown in red and any key takes you back.
 
-### Ctrl+click an issue URL
+### Ctrl+click an issue or story URL
 
 Any `https://github.com/<owner>/<repo>/issues/<n>` link printed in a pane (a `gh` listing, an agent's
 answer, a commit message) can be Ctrl+clicked: the start popup opens with the issue loaded. It has to
-be an issue of the repository the pane is in; otherwise the popup says so.
+be an issue of the repository the pane is in; otherwise the popup says so. A
+`https://app.shortcut.com/<workspace>/story/<id>` link works the same way, and asks for the repository.
 
 The same popup opens from the `zamarrowski.issues.start` action (bound above to `prefix+shift+i`) and
-asks for a number or URL.
+asks for a number, `sc-<id>` or URL.
 
 ### From a terminal or from an agent
 
@@ -162,8 +210,10 @@ cd /path/to/herdr-issues        # or the directory `herdr plugin list` prints as
 
 sh bin/run.sh scripts/issues.mjs --cwd ~/code/shop                 # list open issues
 sh bin/run.sh scripts/issues.mjs --cwd ~/code/shop --closed --json # everything, as JSON
+sh bin/run.sh scripts/issues.mjs --source shortcut --owner me      # Shortcut stories (--source all: both)
 sh bin/run.sh scripts/start.mjs 482 --cwd ~/code/shop --agent codex
 sh bin/run.sh scripts/start.mjs https://github.com/acme/shop/issues/482 --cwd ~/code/shop --no-agent   # worktree only
+sh bin/run.sh scripts/start.mjs sc-482 --cwd ~/code/shop --agent claude   # a story, in the checkout of --cwd
 sh bin/run.sh scripts/setup.mjs --check                             # environment checks, exit 1 on failure
 ```
 
@@ -205,21 +255,23 @@ on macOS and Linux). Create it from [`config.example.json`](config.example.json)
 
 | Key | Default | What it does |
 | --- | --- | --- |
+| `tabs` | `["all", "github", "shortcut"]` | tabs of the popup, in this order |
 | `agent` | `"auto"` | agent kind, or `auto` for the one in your pane |
 | `agent_args` | `{}` | extra argv per agent kind, passed after `--` |
 | `agent_name` | `"issue-{number}"` | herdr agent name, so `herdr agent prompt issue-482 "…"` works later |
 | `branch` | `"issue-{number}-{slug}"` | branch of the new worktree |
 | `base` | `""` | base ref for the branch, e.g. `"origin/main"` (empty: herdr's default, the current HEAD) |
-| `label` | `"#{number} {title}"` | workspace label, cut to `label_max` |
+| `label` | `"{ref} {title}"` | workspace label, cut to `label_max` (`{ref}` is `#482` or `sc-482`) |
 | `prompt` | `"{url}"` | what is typed into the agent |
 | `submit` | `false` | press Enter for you; `false` leaves the prompt in the agent's input |
 | `focus` | `true` | focus the new workspace |
 | `notify` | `true` | herdr toast when the agent has the issue |
 | `workspace_token` | `true` | publish `$issue` for the sidebar |
 | `auto_accept_trust_prompt` | `true` | answer "trust this folder?" dialogs with Enter |
-| `limit` | `100` | issues to list |
+| `limit` | `100` | issues (and stories) to list |
+| `shortcut` | see below | `team`, `query`, and templates for stories: `branch` `sc-{number}-{slug}`, `agent_name` `sc-{number}` |
 
-Templates accept `{number}` `{title}` `{slug}` `{url}` `{repo}` `{owner}` `{name}` `{branch}` `{label}`
+Templates accept `{number}` `{ref}` `{source}` `{title}` `{slug}` `{url}` `{repo}` `{owner}` `{name}` `{branch}` `{label}`
 `{agent}` `{author}` `{labels}`. The full reference, with the timeouts and the environment variables, is
 in [docs/configuration.md](docs/configuration.md).
 
@@ -252,7 +304,7 @@ If a worktree for the issue is already open, the plugin focuses it and leaves it
 
 ## Sidebar label
 
-Each workspace created by the plugin carries an `issue` token (`#482`). Show it by adding `$issue` to
+Each workspace created by the plugin carries an `issue` token (`#482`, or `sc-482` for a story). Show it by adding `$issue` to
 your space rows in `config.toml` (this is herdr's default layout with the token appended; merge it into
 your own rows if you have customised them), then `herdr server reload-config`:
 
@@ -266,11 +318,18 @@ rows = [
 
 ## Data and privacy
 
-- Nothing leaves your machine except the `gh` calls that list and read issues and, when you press `o`,
-  opening the issue in your browser. No tokens are read or stored: `gh` uses its own login.
+- Nothing leaves your machine except the `gh` calls that list and read issues, the Shortcut API calls
+  that list and read stories, and, when you press `o`, opening the issue in your browser.
+- GitHub: no token is read or stored; `gh` uses its own login.
+- Shortcut: the token you type in the Shortcut tab is saved in `secrets.json` in the plugin config
+  directory (`~/.config/herdr/plugins/config/zamarrowski.issues/secrets.json`) with mode `0600`, apart from
+  `config.json` so the config can be shared. It is sent only to `api.app.shortcut.com`, in the
+  `Shortcut-Token` header, and is never cached, logged or printed. `SHORTCUT_API_TOKEN` takes precedence
+  and is never written anywhere. `x` in the Shortcut settings deletes the saved token.
 - Installing runs `npm ci`, which downloads highlight.js (and nothing else) from the npm registry,
   pinned by `package-lock.json`. The plugin never talks to the registry afterwards.
-- The issue list is cached per repository in the plugin state directory
+- The issue list is cached per repository, and the story list per workspace team, with titles and
+  metadata only, in the plugin state directory
   (`~/.local/state/herdr/plugins/zamarrowski.issues/issues/`). Delete it whenever you like.
 - The plugin never edits your herdr `config.toml` unless you press `k` in the setup popup or run
   `setup.mjs --write-keys`; it then keeps a one-time backup next to it.
@@ -280,6 +339,10 @@ rows = [
 `herdr plugin log list --plugin zamarrowski.issues` shows the output of every action the plugin ran, and
 the setup popup (`herdr plugin action invoke zamarrowski.issues.setup`) runs the environment checks.
 
+- **"Shortcut rejected the token"** — the token was revoked or mistyped. `,` on the Shortcut tab and
+  `e` replaces it; if it comes from `SHORTCUT_API_TOKEN`, fix it there.
+- **A story is missing** — the Shortcut tab shows stories that are not done or archived (`c` adds done
+  ones), up to `limit`, filtered by `shortcut.team` and `shortcut.query` when you set them.
 - **"… is not inside a git repository"** — the popup uses the focused pane's directory. Open it from a
   pane inside the checkout, or pass `--cwd`.
 - **"gh: not logged in" / "could not resolve to a Repository"** — run `gh auth login`, and check that
@@ -306,7 +369,8 @@ herdr plugin uninstall zamarrowski.issues            # or `herdr plugin unlink z
 ```
 
 Remove the `# >>> zamarrowski.issues` block from `config.toml` (the setup popup's `u` does it), and
-delete `~/.config/herdr/plugins/config/zamarrowski.issues` and
+delete `~/.config/herdr/plugins/config/zamarrowski.issues` (it holds `config.json` and the saved
+Shortcut token) and
 `~/.local/state/herdr/plugins/zamarrowski.issues` if you want no trace left.
 
 ## Contributing

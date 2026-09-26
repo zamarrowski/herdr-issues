@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { assigneeText, labelText, parseIssueRef, parseIssueUrl, sameRepo } from '../lib/github.mjs'
+import { parseIssueRef, parseIssueUrl, sameRepo } from '../lib/github.mjs'
+import { assigneeText, labelText } from '../lib/sources.mjs'
 import { sampleIssue } from './helpers.mjs'
 
 describe('parseIssueUrl', () => {

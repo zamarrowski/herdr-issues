@@ -1,11 +1,16 @@
 {
-  "$comment": "Every key is optional and documented in docs/configuration.md. Templates accept {number} {title} {slug} {url} {repo} {owner} {name} {branch} {label} {agent} {author} {labels}.",
+  "$comment": "Every key is optional and documented in docs/configuration.md. Templates accept {number} {ref} {source} {title} {slug} {url} {repo} {owner} {name} {branch} {label} {agent} {author} {labels}. The Shortcut API token never goes here: the Shortcut tab of the popup asks for it.",
+  "tabs": [
+    "all",
+    "github",
+    "shortcut"
+  ],
   "agent": "auto",
   "agent_args": {},
   "agent_name": "issue-{number}",
   "branch": "issue-{number}-{slug}",
   "base": "",
-  "label": "#{number} {title}",
+  "label": "{ref} {title}",
   "label_max": 40,
   "slug_max": 40,
   "prompt": "{url}",
@@ -17,6 +22,12 @@
   "notify": true,
   "workspace_token": true,
   "limit": 100,
+  "shortcut": {
+    "team": "",
+    "query": "!is:done !is:archived",
+    "branch": "sc-{number}-{slug}",
+    "agent_name": "sc-{number}"
+  },
   "timeouts": {
     "worktree_ms": 180000,
     "agent_start_ms": 90000,

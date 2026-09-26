@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import { DEFAULTS, merge } from '../lib/config.mjs'
 import { issueVars, planIssue, startIssue } from '../lib/start.mjs'
-import { commandsOf, find, sampleIssue, withFakeHerdr } from './helpers.mjs'
+import { commandsOf, find, sampleIssue, sampleStory, withFakeHerdr } from './helpers.mjs'
 
 // Short timeouts keep the retry loops fast; the fake herdr answers instantly anyway.
 const fastConfig = (overrides = {}) => merge(DEFAULTS, { timeouts: { agent_ready_ms: 50, submit_check_ms: 50, retry_ms: 10 } }, overrides)
@@ -45,6 +45,28 @@ describe('planIssue', () => {
   })
   it('exposes slug with the configured maximum', () => {
     assert.equal(issueVars({ issue: sampleIssue(), repo, config: merge(DEFAULTS, { slug_max: 12 }) }).slug, 'returns-page')
+  })
+})
+
+describe('planIssue for a Shortcut story', () => {
+  it('uses the shortcut templates over the global ones', () => {
+    const plan = planIssue({ issue: sampleStory(), repo: 'shop', config: DEFAULTS, agent: 'codex' })
+    assert.equal(plan.branch, 'sc-482-returns-page-crashes-on-empty-address')
+    assert.equal(plan.label, 'sc-482 Returns page crashes on empty ad…')
+    assert.equal(plan.agentName, 'sc-482')
+    assert.equal(plan.prompt, 'https://app.shortcut.com/acme/story/482/returns-page-crashes-on-empty-address')
+    assert.equal(plan.vars.ref, 'sc-482')
+    assert.equal(plan.vars.source, 'shortcut')
+    assert.equal(plan.vars.repo, 'shop')
+    assert.equal(plan.vars.name, 'shop')
+    assert.equal(plan.vars.owner, '')
+  })
+  it('lets the shortcut block override the label and prompt, and falls back to the global ones', () => {
+    const config = merge(DEFAULTS, { prompt: 'Global {ref}', label: 'G {ref}', shortcut: { prompt: 'Story {ref}: {title}' } })
+    const plan = planIssue({ issue: sampleStory(), repo: 'shop', config })
+    assert.equal(plan.prompt, 'Story sc-482: Returns page crashes on empty address')
+    assert.equal(plan.label, 'G sc-482')
+    assert.equal(planIssue({ issue: sampleIssue(), repo, config }).prompt, 'Global #482', 'GitHub issues keep the global templates')
   })
 })
 
@@ -93,6 +115,21 @@ describe('startIssue', () => {
     assert.equal(result.workspaceId, 'w9')
     assert.equal(result.path, '/tmp/worktrees/repo/issue-482-returns-page-crashes-on-empty-address')
     assert.deepEqual(steps, ['Creating worktree issue-482-returns-page-crashes-on-empty-address', 'Starting codex in the new worktree', 'Typing issue #482 into codex'])
+  })
+
+  it('starts a story with its sc- reference in the token, the steps and the toast', async () => {
+    const steps = []
+    const { result, calls } = await withFakeHerdr('happy', () =>
+      startIssue({ cwd: '/code/api', workspaceId: 'w3', issue: sampleStory(), repo: 'api', agent: 'codex', config: fastConfig(), onStep: text => steps.push(text) }),
+    )
+    const [create] = find(calls, 'worktree', 'create')
+    assert.deepEqual(create.slice(2, 4), ['--workspace', 'w3'])
+    assert.ok(create.includes('sc-482-returns-page-crashes-on-empty-address'))
+    assert.ok(find(calls, 'workspace', 'report-metadata')[0].includes('issue=sc-482'))
+    assert.equal(find(calls, 'agent', 'start')[0][2], 'sc-482')
+    assert.equal(find(calls, 'notification', 'show')[0][2], 'Story sc-482')
+    assert.equal(steps.at(-1), 'Typing story sc-482 into codex')
+    assert.equal(result.agent, 'sc-482')
   })
 
   it('sends the prompt and confirms the agent reacted with submit: true', async () => {
