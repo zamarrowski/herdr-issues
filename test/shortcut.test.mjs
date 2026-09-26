@@ -26,11 +26,11 @@ import { tempDir } from './helpers.mjs'
 
 describe('parseStoryRef', () => {
   it('accepts sc-ids and story URLs', () => {
-    assert.deepEqual(parseStoryRef('sc-482'), { number: 482, workspace: null })
-    assert.deepEqual(parseStoryRef(' [SC-482] '), { number: 482, workspace: null })
-    assert.deepEqual(parseStoryRef('https://app.shortcut.com/acme/story/482'), { number: 482, workspace: 'acme' })
-    assert.deepEqual(parseStoryRef('https://app.shortcut.com/acme/story/482/returns-page?x=1'), { number: 482, workspace: 'acme' })
-    assert.deepEqual(parseStoryRef('https://app.clubhouse.io/acme/story/7/old-host'), { number: 7, workspace: 'acme' })
+    assert.deepEqual(parseStoryRef('sc-482'), { number: 482, ref: 'sc-482', workspace: null })
+    assert.deepEqual(parseStoryRef(' [SC-482] '), { number: 482, ref: 'sc-482', workspace: null })
+    assert.deepEqual(parseStoryRef('https://app.shortcut.com/acme/story/482'), { number: 482, ref: 'sc-482', workspace: 'acme' })
+    assert.deepEqual(parseStoryRef('https://app.shortcut.com/acme/story/482/returns-page?x=1'), { number: 482, ref: 'sc-482', workspace: 'acme' })
+    assert.deepEqual(parseStoryRef('https://app.clubhouse.io/acme/story/7/old-host'), { number: 7, ref: 'sc-7', workspace: 'acme' })
   })
   it('rejects plain numbers, epics and GitHub URLs', () => {
     assert.equal(parseStoryRef('482'), null)

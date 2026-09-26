@@ -144,25 +144,45 @@ describe('launcher', () => {
     let redraws = 0
     const launcher = make({ issue: sampleStory(), repo: null, focusedAgent: 'codex', loadRepos: async () => repos, onRedraw: () => redraws++ })
     assert.equal(launcher.state.view, 'repo')
-    assert.match(screenText(launcher.lines(100, 20)), /Looking for the repositories/)
+    assert.match(screenText(launcher.lines(100, 20)), /Looking at the workspaces open in herdr/)
     await new Promise(resolve => setImmediate(resolve))
     assert.ok(redraws > 0)
     const picker = screenText(launcher.lines(100, 20))
-    assert.match(picker, /Which repository should sc-482 be worked on in\?/)
+    assert.match(picker, /Where should sc-482 be worked on\?/)
     assert.match(picker, /› shop/)
     launcher.key('\x1b[A')
     launcher.key('\r')
     assert.equal(launcher.state.view, 'confirm')
-    assert.deepEqual(launcher.state.target, { root: '/code/api', workspaceId: 'w3' })
+    assert.deepEqual(launcher.state.target, { root: '/code/api', workspaceId: 'w3', tab: false, cwd: null })
     const text = screenText(launcher.lines(100, 20))
     assert.match(text, /Start story · api/)
     assert.match(text, /Repository\s+api/)
     assert.match(text, /Branch\s+sc-482-returns-page-crashes-on-empty-address/)
-    assert.match(text, /r change repository/)
+    assert.match(text, /r change where/)
     launcher.key('r')
     assert.equal(launcher.state.view, 'repo')
     launcher.key('\x1b')
     assert.equal(launcher.state.view, 'confirm', 'Esc keeps the chosen repository')
+  })
+  it('offers a new tab in a workspace without git, and shows it on the confirm screen', async () => {
+    const repos = {
+      items: [
+        { id: 'shop', note: '/code/shop', root: '/code/shop', workspaceId: 'w1' },
+        { id: 'notes', note: '~/notes · new tab', cwd: '/home/ana/notes', workspaceId: 'w2', tab: true },
+      ],
+      preferred: 1,
+    }
+    const launcher = make({ issue: sampleStory(), repo: null, focusedAgent: 'claude', loadRepos: async () => repos })
+    await new Promise(resolve => setImmediate(resolve))
+    assert.match(screenText(launcher.lines(100, 20)), /› notes\s+~\/notes · new tab/)
+    launcher.key('\r')
+    assert.deepEqual(launcher.state.target, { root: null, workspaceId: 'w2', tab: true, cwd: '/home/ana/notes' })
+    const text = screenText(launcher.lines(100, 20))
+    assert.match(text, /Where\s+a new tab in notes\s+~\/notes\n/)
+    assert.match(text, /Tab\s+sc-482 Returns page/)
+    assert.doesNotMatch(text, /Branch/)
+    launcher.key('r')
+    assert.match(screenText(launcher.lines(100, 20)), /› notes/, 'the tab stays selected when coming back')
   })
   it('picks the only repository without asking, then asks for the agent', async () => {
     const launcher = make({ issue: sampleStory(), loadRepos: async () => ({ items: [{ id: 'shop', root: '/code/shop', workspaceId: 'w1' }], preferred: 0 }) })
@@ -174,7 +194,7 @@ describe('launcher', () => {
     let cancelled = false
     const launcher = make({ issue: sampleStory(), focusedAgent: 'codex', loadRepos: async () => ({ items: [], preferred: -1 }), onCancel: () => (cancelled = true) })
     await new Promise(resolve => setImmediate(resolve))
-    assert.match(screenText(launcher.lines(100, 20)), /No repository is open in herdr/)
+    assert.match(screenText(launcher.lines(100, 20)), /No workspace is open in herdr/)
     launcher.key('\x1b')
     assert.equal(cancelled, true)
   })

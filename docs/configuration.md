@@ -31,7 +31,7 @@ Highest first:
 
 | Key | Type | Default | Description |
 | --- | --- | --- | --- |
-| `tabs` | array | `["all", "github", "shortcut"]` | Tabs of the issues popup, in this order. `"all"` shows GitHub issues and Shortcut stories together, newest updated first. Leave a tab out to hide it, configured or not: `["github"]` is the GitHub-only popup of earlier versions. Unknown names are ignored; an empty list shows every tab. |
+| `tabs` | array | `["all", "github", "shortcut", "linear"]` | Tabs of the issues popup, in this order. `"all"` shows GitHub issues, Shortcut stories and Linear issues together, newest updated first. Leave a tab out to hide it, configured or not: `["github"]` is the GitHub-only popup of earlier versions. Unknown names are ignored; an empty list shows every tab. |
 
 ### Agent
 
@@ -49,12 +49,12 @@ Highest first:
 | --- | --- | --- | --- |
 | `branch` | template | `"issue-{number}-{slug}"` | Branch for the new worktree. Characters git refuses in ref names are replaced with `-`. If the branch already exists, its worktree is opened instead of created. |
 | `base` | string | `""` | Base ref for the new branch, passed as `herdr worktree create --base`. Examples: `"main"`, `"origin/main"`. Empty means herdr's default, the source checkout's current HEAD. |
-| `label` | template | `"{ref} {title}"` | Workspace label in the herdr sidebar, cut to `label_max` characters. `{ref}` is `#482` for an issue and `sc-482` for a story. |
+| `label` | template | `"{ref} {title}"` | Workspace label in the herdr sidebar, cut to `label_max` characters. `{ref}` is `#482` for an issue, `sc-482` for a story and `ENG-123` for a Linear issue. |
 | `label_max` | number | `40` | Maximum length of the label. |
 | `slug_max` | number | `40` | Maximum length of `{slug}`, cut at a word boundary. |
 | `focus` | boolean | `true` | Focus the new workspace when herdr opens it (`--focus` / `--no-focus`). |
 | `trust_repository` | boolean | `false` | Pass `--trust-repository` to herdr's worktree commands. herdr's documentation asks to use it only for repositories you have verified. |
-| `workspace_token` | boolean | `true` | Publish an `issue` metadata token (`#482`, `sc-482`) on the new workspace. Show it with `$issue` in `[ui.sidebar.spaces].rows`; see the README. |
+| `workspace_token` | boolean | `true` | Publish an `issue` metadata token (`#482`, `sc-482`, `ENG-123`) on the new workspace. Show it with `$issue` in `[ui.sidebar.spaces].rows`; see the README. |
 
 ### Prompt and feedback
 
@@ -63,7 +63,7 @@ Highest first:
 | `prompt` | template | `"{url}"` | The text typed into the agent. See below. |
 | `submit` | boolean | `false` | Press Enter after typing the prompt (`herdr agent prompt`). `false` types it with `herdr pane send-text` and leaves it in the agent's input, so you can add context before sending. |
 | `notify` | boolean | `true` | Show a herdr toast (`herdr notification show`) when the agent has the issue. |
-| `limit` | number | `100` | Maximum number of issues listed (`gh issue list --limit`), and of stories. |
+| `limit` | number | `100` | Maximum number of issues listed (`gh issue list --limit`), and of stories and of Linear issues. |
 
 The default prompt is the issue URL and nothing else. Every agent knows what to do with a GitHub
 issue URL, and since it is typed but not sent you can complete the sentence before pressing Enter:
@@ -107,15 +107,47 @@ and sorts them by last update, so in a workspace with more open stories than `li
 with `shortcut.team` or `shortcut.query` (`owner:ana`, `iteration:"Sprint 12"`, `type:bug`) rather than
 raising `limit`.
 
-Starting a story asks which repository gets the worktree: the repositories open as herdr workspaces,
-with the one of the pane the popup came from preselected. From the command line, `start.mjs sc-482`
-uses the checkout of `--cwd` (or of the focused pane).
+Starting a story asks where to work, among the workspaces open in herdr, with the one the popup came
+from preselected. A repository gets a worktree (the `branch`, `label` and `agent_name` templates); a
+workspace that is not a git checkout gets a new tab labelled with `label`, and the agent in it. From the
+command line, `start.mjs sc-482` uses the checkout of `--cwd` (or of the focused pane), and opens a tab
+in the current workspace when that is not a git checkout.
 
 The default prompt is the story URL. An agent can open it only if it has access to Shortcut (for
 example through Shortcut's MCP server). Otherwise say what to do in the prompt:
 
 ```json
 { "shortcut": { "prompt": "Work on Shortcut story {ref}: {title}. Read it with the Shortcut MCP first ({url}).", "label": "{ref} {title}" } }
+```
+
+### Linear
+
+Linear issues are set in the `linear` object. The API key is not: the Linear tab of the popup asks for
+a personal API key and saves it in `secrets.json`, like the Shortcut token. `LINEAR_API_KEY` takes
+precedence when it is set. A `token` or `api_key` key here is ignored with a warning.
+
+| Key | Type | Default | Description |
+| --- | --- | --- | --- |
+| `linear.team` | string | `""` | Team key (`"ENG"`) or name. Empty lists the issues of every team in the workspace. The setup popup checks it and lists the team keys when it matches none. |
+| `linear.filter` | object | `{}` | Extra conditions in the format of the `IssueFilter` of Linear's GraphQL API, combined with the team, the state (not completed or canceled, unless `c` is on) and the people filter. Examples: `{ "priority": { "lte": 2 } }` (urgent and high), `{ "project": { "name": { "eq": "Returns" } } }`, `{ "cycle": { "isActive": { "eq": true } } }`. |
+| `linear.branch` | template | `"{ref}-{slug}"` | Branch for a Linear issue (`ENG-123-returns-page-crashes`). Linear's git integration links every branch containing the identifier, in any case. `"{vcs_branch}"` uses the branch name Linear suggests (`ana/eng-123-returns-page-crashes`), which contains a slash: herdr nests the worktree directory accordingly. |
+| `linear.agent_name` | template | `"{ref}"` | herdr agent name for a Linear issue (`eng-123` once lowercased). |
+| `linear.label`, `linear.prompt` | template | the global ones | Set them to give Linear issues their own label or prompt. |
+
+The assignee / creator filter is picked with `f` in the popup and remembered in `ui.json`, like the
+Shortcut one. From the command line, pass `--assignee NAME|me` and `--creator NAME|me` (display
+names) to `issues.mjs --source linear`.
+
+The list is ordered by last update on Linear's side, so `limit` keeps the most recently updated
+issues. Starting one asks where to work, as for a story; `start.mjs ENG-123` uses the checkout of
+`--cwd` (or of the focused pane). A bare number such as `123` is always a GitHub
+issue; `sc-123` is a Shortcut story unless the Shortcut tab is hidden and the Linear one is shown.
+
+The default prompt is the issue URL, which an agent can open only with access to Linear (for example
+Linear's MCP server). Otherwise say what to do in the prompt:
+
+```json
+{ "linear": { "prompt": "Work on Linear issue {ref}: {title}. Read it with the Linear MCP first ({url})." } }
 ```
 
 ### Timeouts
@@ -139,19 +171,20 @@ placeholders are left as written so typos stay visible.
 | Placeholder | Example |
 | --- | --- |
 | `{number}` | `482` |
-| `{ref}` | `#482`, or `sc-482` for a Shortcut story |
-| `{source}` | `github` or `shortcut` |
+| `{ref}` | `#482`, `sc-482` for a Shortcut story, `ENG-123` for a Linear issue |
+| `{source}` | `github`, `shortcut` or `linear` |
 | `{title}` | `Returns page crashes on empty address` |
 | `{slug}` | `returns-page-crashes-on-empty-address` (lowercase ASCII, `slug_max` long) |
-| `{url}` | `https://github.com/acme/shop/issues/482`, or the story URL |
-| `{repo}` | `acme/shop`; for a story, the name of the repository you picked (`shop`) |
-| `{owner}` | `acme` (empty for a story) |
+| `{url}` | `https://github.com/acme/shop/issues/482`, or the story or Linear issue URL |
+| `{repo}` | `acme/shop`; for a story or a Linear issue, the name of the repository or workspace you picked (`shop`) |
+| `{owner}` | `acme` (empty for a story or a Linear issue) |
 | `{name}` | `shop` |
 | `{branch}` | the rendered `branch` (available in `label`, `agent_name` and `prompt`) |
 | `{label}` | the rendered `label` (available in `agent_name` and `prompt`) |
 | `{agent}` | `codex` |
 | `{author}` | `zamarrowski` |
 | `{labels}` | `bug, p1` |
+| `{vcs_branch}` | the branch name the tracker suggests: Shortcut's `ana/sc-482/returns-page-…`, Linear's `ana/eng-123-returns-page-…`; empty for a GitHub issue, so use it in the `shortcut` or `linear` block |
 
 ## Environment variables
 
@@ -163,13 +196,15 @@ Handy for keybinding variants: bind a second key to an action whose command adds
 | `HERDR_ISSUES_BASE` | Overrides `base`. |
 | `HERDR_ISSUES_CWD` | Checkout to work on (instead of the focused pane's directory). |
 | `HERDR_ISSUES_REPO` | `owner/name` whose issues to read, when `gh` should not infer it from the checkout. |
-| `HERDR_ISSUES_URL` | Issue URL or number, `sc-<id>` or story URL for the start popup; the `start` action fills it from `HERDR_PLUGIN_CLICKED_URL` on Ctrl+click. |
+| `HERDR_ISSUES_URL` | Issue URL or number, `sc-<id>`, story URL, Linear key (`ENG-123`) or Linear issue URL for the start popup; the `start` action fills it from `HERDR_PLUGIN_CLICKED_URL` on Ctrl+click. |
 | `HERDR_ISSUES_CONFIG` | Path of `config.json` (default: `$HERDR_PLUGIN_CONFIG_DIR/config.json`). |
 | `HERDR_ISSUES_NODE` | Node.js binary for `bin/run.sh` when it is not in PATH or the usual places. |
 | `GH_BIN` | Path of the `gh` binary. |
 | `SHORTCUT_API_TOKEN` | Shortcut API token. Takes precedence over the one saved from the Shortcut tab, and is never written anywhere. |
 | `HERDR_ISSUES_SECRETS` | Path of `secrets.json` (default: `$HERDR_PLUGIN_CONFIG_DIR/secrets.json`). |
 | `HERDR_ISSUES_SHORTCUT_API` | Base URL of the Shortcut API (default `https://api.app.shortcut.com/api/v3`); the tests point it at a local server. |
+| `LINEAR_API_KEY` | Linear personal API key. Takes precedence over the one saved from the Linear tab, and is never written anywhere. |
+| `HERDR_ISSUES_LINEAR_API` | URL of the Linear GraphQL endpoint (default `https://api.linear.app/graphql`); the tests point it at a local server. |
 | `NO_COLOR` | Disables colours in the popups. |
 
 For example, a binding that always starts issues with Codex, whatever is in your pane:
@@ -221,6 +256,15 @@ Shortcut only, one team's stories, on `feature/` branches:
 {
   "tabs": ["shortcut"],
   "shortcut": { "team": "Backend", "branch": "feature/sc-{number}-{slug}" }
+}
+```
+
+GitHub and Linear, one team's high-priority issues, on the branch Linear suggests:
+
+```json
+{
+  "tabs": ["all", "github", "linear"],
+  "linear": { "team": "ENG", "filter": { "priority": { "lte": 2 } }, "branch": "{vcs_branch}" }
 }
 ```
 

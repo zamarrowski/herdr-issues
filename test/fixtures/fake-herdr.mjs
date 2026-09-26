@@ -131,6 +131,21 @@ switch (`${group} ${command}`) {
       ],
     })
     break
+  case 'tab create': {
+    const id = `${value('--workspace')}:t7`
+    ok({
+      type: 'tab_created',
+      tab: { tab_id: id, workspace_id: value('--workspace'), number: 7, label: value('--label') ?? '7', focused: args.includes('--focus'), pane_count: 1 },
+      root_pane: { pane_id: `${value('--workspace')}:p7`, tab_id: id, workspace_id: value('--workspace'), cwd: value('--cwd') ?? '/', agent_status: 'unknown' },
+    })
+    break
+  }
+  case 'workspace focus':
+    ok({ type: 'ok' })
+    break
+  case 'pane list':
+    ok({ type: 'pane_list', panes: [{ pane_id: 'w2:p1', tab_id: 'w2:t1', workspace_id: 'w2', cwd: '/home/ana/notes', focused: true }] })
+    break
   case 'server reload-config':
     ok({ type: 'ok' })
     break

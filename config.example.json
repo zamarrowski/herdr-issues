@@ -1,9 +1,10 @@
 {
-  "$comment": "Every key is optional and documented in docs/configuration.md. Templates accept {number} {ref} {source} {title} {slug} {url} {repo} {owner} {name} {branch} {label} {agent} {author} {labels}. The Shortcut API token never goes here: the Shortcut tab of the popup asks for it.",
+  "$comment": "Every key is optional and documented in docs/configuration.md. Templates accept {number} {ref} {source} {title} {slug} {url} {repo} {owner} {name} {branch} {label} {agent} {author} {labels} {vcs_branch}. The Shortcut and Linear API tokens never go here: the Shortcut and Linear tabs of the popup ask for them.",
   "tabs": [
     "all",
     "github",
-    "shortcut"
+    "shortcut",
+    "linear"
   ],
   "agent": "auto",
   "agent_args": {},
@@ -27,6 +28,12 @@
     "query": "!is:done !is:archived",
     "branch": "sc-{number}-{slug}",
     "agent_name": "sc-{number}"
+  },
+  "linear": {
+    "team": "",
+    "filter": {},
+    "branch": "{ref}-{slug}",
+    "agent_name": "{ref}"
   },
   "timeouts": {
     "worktree_ms": 180000,

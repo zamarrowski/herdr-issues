@@ -65,7 +65,7 @@ if (!process.stdin.isTTY || !process.stdout.isTTY) {
   if (wants('print') || nothing) {
     console.log(`\nKeybindings for ${herdrConfigPath()} (then: herdr server reload-config):\n\n${keyBlock()}\n`)
     console.log(`Config: ${configPath()}  (create it with --init-config; every key is documented in docs/configuration.md)`)
-    console.log(`Ctrl+click a GitHub issue URL or a Shortcut story URL in any pane to start it; no keybinding needed.`)
+    console.log(`Ctrl+click a GitHub issue, Shortcut story or Linear issue URL in any pane to start it; no keybinding needed.`)
   }
   process.exit()
 }
@@ -90,7 +90,7 @@ const render = (width, height) => {
     paint(c.bold, ' Keybindings'),
     ...keyBlock().split('\n').map(line => paint(line.startsWith('#') ? c.dim : c.reset, `  ${line}`)),
     '',
-    paint(c.dim, ' Ctrl+click a GitHub issue URL or a Shortcut story URL in any pane to start it; no keybinding needed.'),
+    paint(c.dim, ' Ctrl+click a GitHub issue, Shortcut story or Linear issue URL in any pane to start it; no keybinding needed.'),
     paint(c.dim, ` Docs: ${REPO_URL}`),
   ]
   const footer = [notice(state.message), hint('k add keybindings to config.toml · u remove them · c create config.json · q quit')]

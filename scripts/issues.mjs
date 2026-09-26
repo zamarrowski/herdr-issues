@@ -1,28 +1,31 @@
-// Issues browser popup: GitHub issues of the focused pane's repository and Shortcut stories, in tabs
-// (All · GitHub · Shortcut, as configured in `tabs`).
-//   Tab/1-3 switch tabs · Enter read · s start · o open in browser · r refresh · c show closed · / filter · j/k move · q quit
-//   On the Shortcut tab: the token form when no token is set, `f` for the owner / requester filter (remembered),
-//   `,` for the Shortcut settings (edit or remove the token).
+// Issues browser popup: GitHub issues of the focused pane's repository, Shortcut stories and Linear issues,
+// in tabs (All · GitHub · Shortcut · Linear, as configured in `tabs`).
+//   Tab/1-4 switch tabs · Enter read · s start · o open in browser · r refresh · c show closed · / filter · j/k move · q quit
+//   On the Shortcut and Linear tabs: the token form when no token is set, `f` for the people filter
+//   (owner / requester, assignee / creator; remembered), `,` for the settings (edit or remove the token).
 // The repository comes from HERDR_PLUGIN_CONTEXT_JSON (focused pane cwd), or --cwd PATH / --repo owner/name.
 // Without a TTY it prints the list (JSON with --json) and exits, which is handy for scripts and agents.
 import { parseArgs } from '../lib/args.mjs'
 import { clearCaches, readCache, readUiState, writeCache, writeUiState } from '../lib/cache.mjs'
 import { loadConfig } from '../lib/config.mjs'
-import { pickCwd, pickRepo, readContext, repoCandidates, resolveTarget } from '../lib/context.mjs'
+import { pickCwd, pickRepo, readContext, resolveTarget, startTargets } from '../lib/context.mjs'
 import { ago, c, lineLR, pad, paint, plural, tildify, truncate, visibleWidth, wrap } from '../lib/format.mjs'
 import { listIssues, openInBrowser, repoInfo, viewIssue } from '../lib/github.mjs'
-import { FALLBACK_KINDS, agentKinds, workspaceList } from '../lib/herdr.mjs'
+import { FALLBACK_KINDS, agentKinds } from '../lib/herdr.mjs'
 import { createLauncher } from '../lib/launch.mjs'
 import { renderMarkdown } from '../lib/markdown.mjs'
 import { secretsPath } from '../lib/paths.mjs'
 import { openUrl } from '../lib/proc.mjs'
+import { notSetUp } from '../lib/integration.mjs'
+import { ME, REMOTES } from '../lib/remotes.mjs'
 import { removeSecret, saveSecret } from '../lib/secrets.mjs'
-import { ME, SECRET_KEY, TOKEN_ENV, currentMember, filterText, getStory, listStories, loadLookups, normalizeFilter, resolveFilter, shortcutToken } from '../lib/shortcut.mjs'
-import { Noun, TABS, TAB_NAMES, assigneeText, haystack, labelText, mergeByUpdated, sourcesOf, stateText, visibleTabs } from '../lib/sources.mjs'
+import { Noun, REMOTE_SOURCES, TABS, TAB_NAMES, assigneeText, haystack, isRemote, labelText, mergeByUpdated, sourcesOf, stateText, visibleTabs } from '../lib/sources.mjs'
 import { createPicker, createScreen, editLine, header, hint, inputRow, isArrowDown, isArrowUp, isCtrlC, isDown, isEnter, isEsc, isUp, layout, notice, rule, window } from '../lib/tui.mjs'
 
-const USAGE = 'usage: issues.mjs [--source github|shortcut|all] [--owner NAME|me] [--requester NAME|me] [--cwd PATH] [--repo owner/name] [--agent KIND] [--closed] [--json]'
-const args = parseArgs(process.argv.slice(2), { flags: ['json', 'closed', 'help'], values: ['cwd', 'repo', 'agent', 'source', 'owner', 'requester'] })
+// --owner / --requester for Shortcut, --assignee / --creator for Linear: every people filter field.
+const PEOPLE_FLAGS = [...new Set(Object.values(REMOTES).flatMap(remote => remote.filter.names))]
+const USAGE = `usage: issues.mjs [--source ${TABS.slice(1).join('|')}|all] ${PEOPLE_FLAGS.map(flag => `[--${flag} NAME|me]`).join(' ')} [--cwd PATH] [--repo owner/name] [--agent KIND] [--closed] [--json]`
+const args = parseArgs(process.argv.slice(2), { flags: ['json', 'closed', 'help'], values: ['cwd', 'repo', 'agent', 'source', ...PEOPLE_FLAGS] })
 if (args.flags.has('help')) {
   console.log(USAGE)
   process.exit(0)
@@ -37,12 +40,14 @@ const target = {
 }
 const tabs = visibleTabs(config.tabs)
 const needed = sourcesOf(tabs)
+// Shortcut and Linear, when a tab shows them: each has its token, its account and its people filter.
+const remoteIds = REMOTE_SOURCES.filter(id => needed.includes(id))
 const remembered = readUiState()
 
 const state = {
   tab: tabs.includes(remembered.tab) ? remembered.tab : tabs[0],
   cursor: 0,
-  view: 'list', // list | detail | settings | launch
+  view: 'list', // list | detail | settings | filter | launch
   showClosed: false,
   filter: '',
   filtering: false,
@@ -55,28 +60,28 @@ const state = {
   launcher: null,
   launchFrom: 'list',
   confirmRemove: false,
-  scFilter: normalizeFilter(remembered.shortcut_filter), // { owner, requester }: null | ME | mention
-  filterRow: 0, // 0 owner, 1 requester, on the filter screen
+  filterRow: 0, // row of the people filter screen
   peoplePicker: null,
 }
 
-const sources = {
-  github: { items: [], fetchedAt: null, loading: false, error: null },
-  shortcut: {
+const sources = { github: { items: [], fetchedAt: null, loading: false, error: null } }
+for (const id of REMOTE_SOURCES) {
+  sources[id] = {
     items: [],
     fetchedAt: null,
     loading: false,
     error: null,
-    auth: shortcutToken(), // { token, from: 'env' | 'file' } | null
-    me: null, // { mention, name, workspace }
+    auth: REMOTES[id].auth(), // { token, from: 'env' | 'file' } | null
+    me: null, // { handle, name, workspace }
     workspace: null,
     lookups: null,
+    // { owner, requester } for Shortcut, { assignee, creator } for Linear: null | ME | handle
+    filter: REMOTES[id].filter.normalize(remembered[`${id}_filter`]),
     form: { input: '', checking: false, error: null, editing: false },
-  },
+  }
 }
-const shortcut = sources.shortcut
 // One cached list per team and people filter, so switching the filter paints instantly too.
-const shortcutCacheKey = () => `shortcut:${config.shortcut?.team || 'all'}:${state.scFilter.owner ?? '-'}:${state.scFilter.requester ?? '-'}`
+const cacheKey = id => `${id}:${REMOTES[id].team(config) || 'all'}:${REMOTES[id].filter.names.map(field => sources[id].filter[field] ?? '-').join(':')}`
 
 // ── data ────────────────────────────────────────────────────────────────────
 
@@ -91,8 +96,8 @@ const current = () => visibleIssues()[state.cursor]
 const clampCursor = () => {
   state.cursor = Math.max(0, Math.min(state.cursor, visibleIssues().length - 1))
 }
-// The Shortcut tab shows the token form instead of the list while no token is set (or while editing it).
-const tokenFormActive = () => state.tab === 'shortcut' && (!shortcut.auth || shortcut.form.editing)
+// The Shortcut and Linear tabs show the token form instead of the list while no token is set (or while editing it).
+const tokenFormActive = () => Boolean(REMOTES[state.tab]) && (!sources[state.tab].auth || sources[state.tab].form.editing)
 
 const resolveRepo = async () => {
   if (!target.root && !target.repo) {
@@ -133,53 +138,54 @@ const loadGithub = async ({ force = false } = {}) => {
   }
 }
 
-const loadShortcut = async ({ force = false } = {}) => {
-  if (!shortcut.auth) return
-  if (shortcut.loading) {
-    shortcut.reload = true // a newer request (another filter) waits for this one
+const loadRemote = async (id, { force = false } = {}) => {
+  const remote = REMOTES[id]
+  const source = sources[id]
+  if (!source.auth) return
+  if (source.loading) {
+    source.reload = true // a newer request (another filter) waits for this one
 
     return
   }
-  shortcut.loading = true
-  shortcut.error = null
+  source.loading = true
+  source.error = null
   draw()
   try {
-    if (!force && shortcut.items.length === 0 && !state.showClosed) {
-      const cached = readCache(shortcutCacheKey())
+    if (!force && source.items.length === 0 && !state.showClosed) {
+      const cached = readCache(cacheKey(id))
       if (cached?.issues?.length) {
-        shortcut.items = cached.issues
-        shortcut.fetchedAt = cached.fetchedAt
-        shortcut.workspace = cached.workspace ?? null
-        shortcut.lookups = cached.lookups ?? null
+        source.items = cached.issues
+        source.fetchedAt = cached.fetchedAt
+        source.workspace = cached.workspace ?? null
+        source.lookups = cached.lookups ?? null
         draw()
       }
     }
-    const { token } = shortcut.auth
-    const [me, lookups] = await Promise.all([shortcut.me ?? currentMember(token), loadLookups(token)])
-    shortcut.me = me
-    shortcut.workspace = me.workspace
-    shortcut.lookups = lookups
-    const filter = { ...state.scFilter }
-    const items = await listStories(token, { query: config.shortcut.query, team: config.shortcut.team, closed: state.showClosed, limit: config.limit, lookups, ...resolveFilter(filter, me) })
-    if (filter.owner !== state.scFilter.owner || filter.requester !== state.scFilter.requester) return // the filter changed meanwhile
-    shortcut.items = items
-    shortcut.fetchedAt = Date.now()
-    if (!state.showClosed) writeCache(shortcutCacheKey(), { fetchedAt: shortcut.fetchedAt, issues: shortcut.items, workspace: shortcut.workspace, lookups })
+    const { token } = source.auth
+    const [me, lookups] = await Promise.all([source.me ?? remote.whoami(token), remote.lookups(token)])
+    source.me = me
+    source.workspace = me.workspace
+    source.lookups = lookups
+    const filter = { ...source.filter }
+    const items = await remote.list(token, { config, closed: state.showClosed, limit: config.limit, lookups, filter, me })
+    if (remote.filter.names.some(field => filter[field] !== source.filter[field])) return // the filter changed meanwhile
+    source.items = items
+    source.fetchedAt = Date.now()
+    if (!state.showClosed) writeCache(cacheKey(id), { fetchedAt: source.fetchedAt, issues: source.items, workspace: source.workspace, lookups })
   } catch (error) {
-    shortcut.error = error.message
+    source.error = error.message
   } finally {
-    shortcut.loading = false
+    source.loading = false
     clampCursor()
     draw()
-    if (shortcut.reload) {
-      shortcut.reload = false
-      loadShortcut()
+    if (source.reload) {
+      source.reload = false
+      loadRemote(id)
     }
   }
 }
 
-const load = ({ force = false } = {}) =>
-  Promise.all([needed.includes('github') ? loadGithub({ force }) : null, needed.includes('shortcut') ? loadShortcut({ force }) : null])
+const load = ({ force = false } = {}) => Promise.all([needed.includes('github') ? loadGithub({ force }) : null, ...remoteIds.map(id => loadRemote(id, { force }))])
 
 const openDetail = async () => {
   const issue = current()
@@ -191,10 +197,10 @@ const openDetail = async () => {
   state.message = ''
   draw()
   try {
-    const full =
-      issue.source === 'shortcut'
-        ? await getStory(shortcut.auth?.token, issue.number, { lookups: shortcut.lookups ?? {} })
-        : await viewIssue({ cwd: target.root, repo: target.repo }, issue.number)
+    const remote = sources[issue.source]
+    const full = isRemote(issue)
+      ? await REMOTES[issue.source].view(remote.auth?.token, issue, { lookups: remote.lookups ?? {} })
+      : await viewIssue({ cwd: target.root, repo: target.repo }, issue.number)
     if (state.view === 'detail' && state.detail?.ref === issue.ref) {
       state.detail = full
       state.detailFull = true
@@ -209,7 +215,7 @@ const openBrowser = async () => {
   const issue = state.view === 'detail' ? state.detail : current()
   if (!issue) return
   try {
-    if (issue.source === 'shortcut') await openUrl(issue.url)
+    if (isRemote(issue)) await openUrl(issue.url)
     else await openInBrowser({ cwd: target.root, repo: target.repo }, issue.number)
     state.message = `Opened ${issue.ref} in the browser`
   } catch (error) {
@@ -221,7 +227,7 @@ const openBrowser = async () => {
 const askStart = () => {
   const issue = state.view === 'detail' ? state.detail : current()
   if (!issue) return
-  const story = issue.source === 'shortcut'
+  const story = isRemote(issue) // a Shortcut story or a Linear issue: no repository of its own
   if (!story && !target.root) {
     state.message = 'Starting needs a local checkout: open the popup from a pane inside the repository'
 
@@ -237,8 +243,8 @@ const askStart = () => {
     kinds: state.kinds,
     focusedAgent: target.focusedAgent,
     explicitAgent: args.values.agent ?? null,
-    // Nothing ties a story to a repository: ask, with the pane's repository preselected.
-    loadRepos: story ? async () => repoCandidates(await workspaceList(), { workspaceId: context.workspace_id ?? null, root: target.root }) : null,
+    // Nothing ties a story or a Linear issue to a repository: ask, with the pane's repository preselected.
+    loadRepos: story ? () => startTargets({ workspaceId: context.workspace_id ?? null, root: target.root }) : null,
     onRedraw: () => draw(),
     onCancel: quit => {
       if (quit) return screen.exit(0)
@@ -259,24 +265,26 @@ const switchTab = next => {
 }
 const cycleTab = step => switchTab(tabs[(tabs.indexOf(state.tab) + step + tabs.length) % tabs.length])
 
-// ── Shortcut token ──────────────────────────────────────────────────────────
+// ── Shortcut and Linear tokens ──────────────────────────────────────────────
 
-const submitToken = async () => {
-  const { form } = shortcut
+const submitToken = async id => {
+  const remote = REMOTES[id]
+  const source = sources[id]
+  const { form } = source
   const token = form.input.trim()
   if (!token || form.checking) return
   form.checking = true
   form.error = null
   draw()
   try {
-    const me = await currentMember(token)
-    saveSecret(SECRET_KEY, token)
-    clearCaches('shortcut:')
-    Object.assign(shortcut, { auth: { token, from: 'file' }, me, workspace: me.workspace, items: [], fetchedAt: null, error: null })
+    const me = await remote.whoami(token)
+    saveSecret(remote.secretKey, token)
+    clearCaches(`${id}:`)
+    Object.assign(source, { auth: { token, from: 'file' }, me, workspace: me.workspace, items: [], fetchedAt: null, error: null })
     form.input = ''
     form.editing = false
-    state.message = `Shortcut connected: @${me.mention} in ${me.workspace}`
-    loadShortcut({ force: true })
+    state.message = `${remote.name} connected: @${me.handle} in ${me.workspace}`
+    loadRemote(id, { force: true })
   } catch (error) {
     form.error = error.message
   } finally {
@@ -285,65 +293,80 @@ const submitToken = async () => {
   }
 }
 
-const removeToken = () => {
-  removeSecret(SECRET_KEY)
-  clearCaches('shortcut:')
-  Object.assign(shortcut, { auth: shortcutToken(), me: null, workspace: null, lookups: null, items: [], fetchedAt: null, error: null })
+const removeToken = id => {
+  const remote = REMOTES[id]
+  removeSecret(remote.secretKey)
+  clearCaches(`${id}:`)
+  Object.assign(sources[id], { auth: remote.auth(), me: null, workspace: null, lookups: null, items: [], fetchedAt: null, error: null })
   state.confirmRemove = false
   state.view = 'list'
   state.cursor = 0
-  state.message = 'Shortcut token removed'
+  state.message = `${remote.name} ${remote.tokenName} removed`
 }
 
-// ── Shortcut people filter ──────────────────────────────────────────────────
+// ── people filter (Shortcut owner / requester, Linear assignee / creator) ──
 
-const FILTER_FIELDS = [
-  ['owner', 'Owner'],
-  ['requester', 'Requester'],
-]
-const filterValueText = value => (value === ME ? `me${shortcut.me ? ` (@${shortcut.me.mention})` : ''}` : value ? `@${value}` : 'anyone')
-const shortcutFilterAvailable = () => shortcut.auth && (state.tab === 'shortcut' || (state.tab === 'all' && needed.includes('shortcut')))
+// The sources the filter screen covers: the tab's own, or every connected one on the All tab.
+const filterRemotes = () => (REMOTES[state.tab] ? [state.tab] : state.tab === 'all' ? remoteIds : []).filter(id => sources[id].auth)
+const filterRows = () => {
+  const ids = filterRemotes()
+
+  return ids.flatMap(id => REMOTES[id].filter.fields.map(([field, name]) => ({ id, field, name: ids.length > 1 ? `${REMOTES[id].name} ${name.toLowerCase()}` : name })))
+}
+const filterValueText = (id, value) => {
+  const me = sources[id].me
+
+  return value === ME ? `me${me ? ` (@${me.handle})` : ''}` : value ? `@${value}` : 'anyone'
+}
 
 const openFilter = () => {
-  state.view = 'sc-filter'
+  state.view = 'filter'
+  state.filterRow = Math.min(state.filterRow, filterRows().length - 1)
   state.peoplePicker = null
   state.message = ''
 }
 
-const setFilter = next => {
-  state.scFilter = normalizeFilter(next)
-  writeUiState({ shortcut_filter: state.scFilter })
-  Object.assign(shortcut, { items: [], fetchedAt: null, error: null })
+const setFilter = (id, next) => {
+  const source = sources[id]
+  source.filter = REMOTES[id].filter.normalize(next)
+  writeUiState({ [`${id}_filter`]: source.filter })
+  Object.assign(source, { items: [], fetchedAt: null, error: null })
   state.cursor = 0
-  loadShortcut()
+  loadRemote(id)
 }
 
 const openPeoplePicker = () => {
-  const people = shortcut.lookups?.people
-  if (!people) {
+  const row = filterRows()[state.filterRow]
+  if (!row) return
+  const remote = REMOTES[row.id]
+  const source = sources[row.id]
+  if (!source.lookups) {
     state.message = 'The members of the workspace are still loading'
 
     return
   }
-  const [field, name] = FILTER_FIELDS[state.filterRow]
   const items = [
     { id: 'anyone', note: 'no filter', value: null },
-    { id: 'me', note: shortcut.me ? `@${shortcut.me.mention}` : 'the owner of the token', value: ME },
-    ...people.map(person => ({ id: `@${person.mention}`, note: person.name, value: person.mention })),
+    { id: 'me', note: source.me ? `@${source.me.handle}` : `the owner of the ${remote.tokenWord}`, value: ME },
+    ...remote.people(source.lookups).map(person => ({ id: `@${person.handle}`, note: person.name, value: person.handle })),
   ]
-  state.peoplePicker = createPicker({ items, title: `${name} of the stories`, empty: 'nobody matches', matchNote: true })
-  const current = items.findIndex(item => item.value === (state.scFilter[field] ?? null))
+  const [, name] = remote.filter.fields.find(([field]) => field === row.field)
+  state.peoplePicker = createPicker({ items, title: `${name} of the ${remote.plural}`, empty: 'nobody matches', matchNote: true })
+  const current = items.findIndex(item => item.value === (source.filter[row.field] ?? null))
   if (current >= 0) state.peoplePicker.state.cursor = current
 }
 
 const openSettings = () => {
+  const id = state.tab
+  const source = sources[id]
   state.view = 'settings'
   state.confirmRemove = false
   state.message = ''
-  if (shortcut.auth && !shortcut.me) {
-    currentMember(shortcut.auth.token)
+  if (source.auth && !source.me) {
+    REMOTES[id]
+      .whoami(source.auth.token)
       .then(me => {
-        shortcut.me = me
+        source.me = me
       })
       .catch(error => {
         state.message = error.message
@@ -354,12 +377,13 @@ const openSettings = () => {
 
 // ── rendering ───────────────────────────────────────────────────────────────
 
-const noun = tab => (tab === 'shortcut' ? 'stories' : tab === 'github' ? 'issues' : 'issues or stories')
+// "stories" on the Shortcut tab, "issues or stories" on All when Shortcut is one of its sources.
+const noun = tab => (REMOTES[tab] ? REMOTES[tab].plural : tab === 'github' ? 'issues' : [...new Set(['issues', ...remoteIds.map(id => REMOTES[id].plural)])].join(' or '))
 
 const tabBar = width => {
   const count = tab => {
     const list = tab === 'all' ? needed.map(source => sources[source]) : [sources[tab]]
-    if (tab === 'shortcut' && !shortcut.auth) return ''
+    if (REMOTES[tab] && !sources[tab].auth) return ''
     if (list.some(source => source.loading) && !tabItems(tab).length) return ' …'
     if (list.every(source => source.error)) return ' !'
 
@@ -374,13 +398,24 @@ const tabBar = width => {
   return truncate(` ${parts.join(' ')}`, width)
 }
 
-const subtitle = tab => {
-  const people = filterText(state.scFilter)
-  const shortcutText = shortcut.workspace ? `${shortcut.workspace}${config.shortcut.team ? ` (${config.shortcut.team})` : ''}${people ? ` · ${people}` : ''}` : ''
-  if (tab === 'github') return target.repo ?? target.cwd
-  if (tab === 'shortcut') return shortcutText || 'Shortcut'
+// "acme (Backend) · owner me": the workspace, the configured team and the people filter of a source.
+const remoteText = id => {
+  const { workspace, filter } = sources[id]
+  if (!workspace) return ''
+  const team = REMOTES[id].team(config)
+  const people = REMOTES[id].filter.text(filter)
 
-  return [needed.includes('github') ? target.repo : '', needed.includes('shortcut') ? shortcutText : ''].filter(Boolean).join(' + ')
+  return `${workspace}${team ? ` (${team})` : ''}${people ? ` · ${people}` : ''}`
+}
+
+const subtitle = tab => {
+  if (tab === 'github') return target.repo ?? target.cwd
+  if (REMOTES[tab]) return remoteText(tab) || REMOTES[tab].name
+  const remotes = remoteIds.filter(remoteText)
+  // Two workspaces are told apart by their source ("Shortcut acme + Linear acme").
+  const named = id => (remotes.length > 1 ? `${REMOTES[id].name} ${remoteText(id)}` : remoteText(id))
+
+  return [needed.includes('github') ? target.repo : '', ...remotes.map(named)].filter(Boolean).join(' + ')
 }
 
 const headerRight = tab => {
@@ -408,37 +443,55 @@ const issueLine = (issue, selected, widths) => {
   return ` ${pointer} ${number} ${pad(title, widths.title)}${status} ${labels} ${assignee} ${age}`
 }
 
-const tokenFormLines = width => {
-  const { form } = shortcut
+const tokenFormLines = (id, width) => {
+  const remote = REMOTES[id]
+  const { form } = sources[id]
   const masked = '•'.repeat(Math.min([...form.input].length, 48))
-  const input = inputRow('API token:', masked, width)
+  const input = inputRow(`${remote.tokenName}:`, masked, width)
   const lines = [
     '',
-    paint(c.bold, form.editing ? ' Replace the Shortcut API token' : ' Connect Shortcut'),
+    paint(c.bold, form.editing ? ` Replace the ${remote.name} ${remote.tokenName}` : ` Connect ${remote.name}`),
     '',
-    ' Create a token in Shortcut under Settings → Your account → API Tokens, paste it here and press Enter.',
+    ...wrap(remote.tokenHelp, Math.max(20, width - 2)).map(line => ` ${line}`),
     paint(c.dim, ` It is checked against the API, then saved in ${tildify(secretsPath())} (readable by you only).`),
-    paint(c.dim, ` ${TOKEN_ENV}, when set, takes precedence.`),
-    '',
-    input.text,
+    paint(c.dim, ` ${remote.tokenEnv}, when set, takes precedence.`),
     '',
   ]
-  if (form.checking) lines.push(paint(c.dim, ' Checking the token…'))
+  const cursorRow = lines.length
+  lines.push(input.text, '')
+  if (form.checking) lines.push(paint(c.dim, ` Checking the ${remote.tokenWord}…`))
   else if (form.error) lines.push(paint(c.red, ` ${form.error}`))
 
-  return { lines, cursorRow: 8, cursorCol: input.cursorCol }
+  return { lines, cursorRow, cursorCol: input.cursorCol }
 }
 
 // One line per source that has something to say in the All tab (not set up, failed).
 const sourceNotes = () => {
   const notes = []
   if (needed.includes('github') && sources.github.error) notes.push(paint(c.dim, ` GitHub: ${sources.github.error}`))
-  if (needed.includes('shortcut')) {
-    if (!shortcut.auth) notes.push(paint(c.dim, ` Shortcut is not set up: open the Shortcut tab (${tabs.indexOf('shortcut') >= 0 ? tabs.indexOf('shortcut') + 1 : 'add it to "tabs"'}) to add a token.`))
-    else if (shortcut.error) notes.push(paint(c.dim, ` Shortcut: ${shortcut.error}`))
+  for (const id of remoteIds) {
+    const remote = REMOTES[id]
+    const where = tabs.includes(id) ? tabs.indexOf(id) + 1 : 'add it to "tabs"'
+    if (!sources[id].auth) notes.push(paint(c.dim, ` ${remote.name} is not set up: open the ${remote.name} tab (${where}) to add an ${remote.tokenName}.`))
+    else if (sources[id].error) notes.push(paint(c.dim, ` ${remote.name}: ${sources[id].error}`))
   }
 
   return notes
+}
+
+// The people filter hint: "Shortcut: f owner/requester (owner me) · , settings" on a source tab, both
+// sources in one line on the All tab.
+const filterHint = tab => {
+  const ids = filterRemotes()
+  const people = id => REMOTES[id].filter.text(sources[id].filter)
+  if (ids.length === 1) {
+    const [id] = ids
+    const fields = REMOTES[id].filter.names.join('/')
+
+    return hint(`${REMOTES[id].name}: f ${fields}${people(id) ? ` (${people(id)})` : ''}${tab === id ? ' · , settings' : ''}`)
+  }
+
+  return hint(`f people filter: ${ids.map(id => `${REMOTES[id].name}${people(id) ? ` (${people(id)})` : ''}`).join(' · ')}`)
 }
 
 const listFrame = (width, height) => {
@@ -448,10 +501,10 @@ const listFrame = (width, height) => {
   let cursor = null
 
   if (tokenFormActive()) {
-    const form = tokenFormLines(width)
+    const form = tokenFormLines(tab, width)
     cursor = { row: body.length + form.cursorRow, col: form.cursorCol }
     body.push(...form.lines)
-    footer.push(notice(state.message), hint(`Enter save${shortcut.form.editing ? ' · Esc cancel' : ''} · Tab switch tab · Ctrl+U clear · Ctrl+C quit`))
+    footer.push(notice(state.message), hint(`Enter save${sources[tab].form.editing ? ' · Esc cancel' : ''} · Tab switch tab · Ctrl+U clear · Ctrl+C quit`))
 
     return { lines: layout(body, footer, height), cursor }
   }
@@ -462,10 +515,7 @@ const listFrame = (width, height) => {
     cursor = { row: height - 1, col: input.cursorCol }
   } else footer.push(notice(state.message || (state.filter ? `filter: ${state.filter} (Esc clears)` : '')))
   footer.push(hint(`Tab switch · Enter read · s start · o browser · r refresh · c ${state.showClosed ? 'hide' : 'show'} closed · / filter · q quit`))
-  if (shortcutFilterAvailable()) {
-    const people = filterText(state.scFilter)
-    footer.push(hint(`Shortcut: f owner/requester${people ? ` (${people})` : ''}${tab === 'shortcut' ? ' · , settings' : ''}`))
-  }
+  if (filterRemotes().length) footer.push(filterHint(tab))
 
   const issues = visibleIssues()
   const error = tab === 'all' ? null : sources[tab].error
@@ -474,7 +524,7 @@ const listFrame = (width, height) => {
   const loading = (tab === 'all' ? needed.map(source => sources[source]) : [sources[tab]]).some(source => source.loading)
   if (error) body.push(...wrap(error, Math.max(20, width - 2)).map(line => paint(c.red, ` ${line}`)))
   else if (issues.length === 0) {
-    const people = tab === 'shortcut' && filterText(state.scFilter) ? ` for ${filterText(state.scFilter)} (f changes it)` : ''
+    const people = REMOTES[tab]?.filter.text(sources[tab].filter) ? ` for ${REMOTES[tab].filter.text(sources[tab].filter)} (f changes it)` : ''
     body.push(paint(c.dim, loading ? ` Loading ${noun(tab)}…` : state.filter ? ` No ${noun(tab)} match the filter.` : ` No open ${noun(tab)}${people}.`))
   }
   else {
@@ -494,23 +544,16 @@ const listFrame = (width, height) => {
 
 const detailLines = width => {
   const issue = state.detail
-  const story = issue.source === 'shortcut'
   const inner = Math.max(20, width - 2)
   const out = []
   for (const line of wrap(`${issue.ref} ${issue.title}`, inner)) out.push(paint(c.bold, line))
-  const meta = story
-    ? [
-        issue.stateName,
-        issue.type,
-        issue.estimate !== null && issue.estimate !== undefined ? `estimate ${issue.estimate}` : '',
-        issue.author?.login ? `requested by ${issue.author.login}` : '',
-        `created ${ago(issue.createdAt)} ago`,
-        `updated ${ago(issue.updatedAt)} ago`,
-      ]
+  const remote = REMOTES[issue.source]
+  const meta = remote
+    ? [...remote.meta(issue), `created ${ago(issue.createdAt)} ago`, `updated ${ago(issue.updatedAt)} ago`]
     : [issue.state, issue.author?.login ? `by ${issue.author.login}` : '', `opened ${ago(issue.createdAt)} ago`, `updated ${ago(issue.updatedAt)} ago`]
-  out.push(paint(c.dim, meta.filter(Boolean).join(' · ')))
+  for (const line of wrap(meta.filter(Boolean).join(' · '), inner)) out.push(paint(c.dim, line))
   if (issue.labels?.length) out.push(paint(c.yellow, `labels: ${labelText(issue)}`))
-  if (issue.assignees?.length) out.push(paint(c.cyan, `${story ? 'owners' : 'assignees'}: ${assigneeText(issue)}`))
+  if (issue.assignees?.length) out.push(paint(c.cyan, `${remote?.assigneeLabel ?? 'assignees'}: ${assigneeText(issue)}`))
   out.push(paint(c.dim, issue.url ?? ''))
   out.push('')
   const body = text => (state.rendered ? renderMarkdown(text, inner) : wrap(text, inner))
@@ -529,7 +572,7 @@ const detailLines = width => {
 const detailFrame = (width, height) => {
   const issues = visibleIssues()
   const issue = state.detail
-  const where = issue.source === 'shortcut' ? (shortcut.workspace ?? '') : (target.repo ?? '')
+  const where = isRemote(issue) ? (sources[issue.source].workspace ?? '') : (target.repo ?? '')
   const body = [header(Noun(issue), { subtitle: where, right: issues.length ? `${state.cursor + 1}/${issues.length}` : '' }, width), rule(width)]
   const footerSize = 2
   const bodyRows = Math.max(1, height - body.length - footerSize)
@@ -543,18 +586,17 @@ const detailFrame = (width, height) => {
 }
 
 const settingsFrame = (width, height) => {
-  const auth = shortcut.auth
-  const me = shortcut.me
+  const remote = REMOTES[state.tab]
+  const { auth, me, workspace } = sources[state.tab]
   const row = (name, value) => ` ${paint(c.dim, name.padEnd(12))} ${value}`
-  const body = [header('Shortcut', { subtitle: shortcut.workspace ?? '' }, width), rule(width), '']
-  body.push(row('Account', me ? `@${me.mention}${me.name ? ` (${me.name})` : ''} in ${me.workspace}` : paint(c.dim, 'checking…')))
-  body.push(row('Token', auth?.from === 'env' ? `from ${TOKEN_ENV}` : `saved in ${tildify(secretsPath())}`))
-  body.push(row('Team', config.shortcut.team || paint(c.dim, 'every team (set "shortcut.team" in config.json to narrow it)')))
-  body.push(row('Query', config.shortcut.query))
+  const body = [header(remote.name, { subtitle: workspace ?? '' }, width), rule(width), '']
+  body.push(row('Account', me ? `@${me.handle}${me.name ? ` (${me.name})` : ''} in ${me.workspace}` : paint(c.dim, 'checking…')))
+  body.push(row('Token', auth?.from === 'env' ? `from ${remote.tokenEnv}` : `saved in ${tildify(secretsPath())}`))
+  for (const [name, text, placeholder] of remote.settingsRows(config)) body.push(row(name, placeholder ? paint(c.dim, text) : text))
   body.push('')
-  if (auth?.from === 'env') body.push(paint(c.dim, ` The token comes from ${TOKEN_ENV}; change or unset it there to manage it here.`))
+  if (auth?.from === 'env') body.push(paint(c.dim, ` The token comes from ${remote.tokenEnv}; change or unset it there to manage it here.`))
   const keys = auth?.from === 'env' ? 'Esc back · q quit' : state.confirmRemove ? 'y remove the token · any other key keeps it' : 'e replace token · x remove token · Esc back · q quit'
-  const footer = [notice(state.confirmRemove ? `Remove the Shortcut token from ${tildify(secretsPath())}?` : state.message), hint(keys)]
+  const footer = [notice(state.confirmRemove ? `Remove the ${remote.name} token from ${tildify(secretsPath())}?` : state.message), hint(keys)]
 
   return layout(body, footer, height)
 }
@@ -565,21 +607,30 @@ const filterFrame = (width, height) => {
 
     return { lines: layout(lines, [notice(state.message), hint('Enter choose · ↑↓ / Tab move · type a name to filter · Esc back')], height), cursor }
   }
-  const body = [header('Shortcut filter', { subtitle: shortcut.workspace ?? '' }, width), rule(width), '']
-  FILTER_FIELDS.forEach(([field, name], index) => {
+  const ids = filterRemotes()
+  const rows = filterRows()
+  const single = ids.length === 1 ? REMOTES[ids[0]] : null
+  const title = single ? `${single.name} filter` : 'People filter'
+  const where = ids.filter(id => sources[id].workspace).map(id => (single ? '' : `${REMOTES[id].name} `) + sources[id].workspace)
+  const body = [header(title, { subtitle: where.join(' + ') }, width), rule(width), '']
+  const labelWidth = Math.max(10, ...rows.map(row => row.name.length + 1))
+  rows.forEach((row, index) => {
     const selected = index === state.filterRow
-    const value = filterValueText(state.scFilter[field])
-    body.push(` ${selected ? paint(c.cyan, '›') : ' '} ${paint(c.dim, name.padEnd(10))} ${selected ? paint(c.bold, value) : value}`)
+    const value = filterValueText(row.id, sources[row.id].filter[row.field])
+    body.push(` ${selected ? paint(c.cyan, '›') : ' '} ${paint(c.dim, row.name.padEnd(labelWidth))} ${selected ? paint(c.bold, value) : value}`)
   })
-  body.push('', paint(c.dim, ' Only stories with this owner and requester are searched, and the choice is kept for next time.'))
-  const footer = [notice(state.message), hint('Enter change · ↑↓ move · x clear both · Esc back')]
+  const explain = single
+    ? `Only ${single.plural} with this ${single.filter.names.join(' and ')} are searched`
+    : 'Each source searches only for the people set here'
+  body.push('', paint(c.dim, ` ${explain}, and the choice is kept for next time.`))
+  const footer = [notice(state.message), hint(`Enter change · ↑↓ move · x clear ${rows.length > 2 ? 'all' : 'both'} · Esc back`)]
 
   return layout(body, footer, height)
 }
 
 const render = (width, height) => {
   if (state.view === 'launch') return state.launcher.lines(width, height)
-  if (state.view === 'sc-filter') return filterFrame(width, height)
+  if (state.view === 'filter') return filterFrame(width, height)
   if (state.view === 'detail') return detailFrame(width, height)
   if (state.view === 'settings') return settingsFrame(width, height)
 
@@ -592,7 +643,7 @@ const isTabKey = key => key === '\t' || key === '\x1b[Z'
 const tabStep = key => (key === '\x1b[Z' ? -1 : 1)
 
 const onTokenKey = key => {
-  const { form } = shortcut
+  const { form } = sources[state.tab]
   if (isCtrlC(key)) return screen.exit(0)
   if (isTabKey(key)) return cycleTab(tabStep(key))
   if (form.checking) return
@@ -606,7 +657,7 @@ const onTokenKey = key => {
 
     return
   }
-  if (isEnter(key)) return submitToken()
+  if (isEnter(key)) return submitToken(state.tab)
   form.input = editLine(form.input, key)
   form.error = null
 }
@@ -644,8 +695,8 @@ const onListKey = key => {
   else if (key === 's' || key === 'S') return askStart()
   else if (key === 'o' || key === 'O') return openBrowser()
   else if (key === 'r' || key === 'R') return load({ force: true })
-  else if (key === ',' && state.tab === 'shortcut') return openSettings()
-  else if ((key === 'f' || key === 'F') && shortcutFilterAvailable()) return openFilter()
+  else if (key === ',' && REMOTES[state.tab]) return openSettings()
+  else if ((key === 'f' || key === 'F') && filterRemotes().length) return openFilter()
   else if (key === '/') {
     state.filtering = true
     state.message = ''
@@ -683,7 +734,7 @@ const onSettingsKey = key => {
   if (state.confirmRemove) {
     if (key === 'y' || key === 'Y') {
       try {
-        removeToken()
+        removeToken(state.tab)
       } catch (error) {
         state.confirmRemove = false
         state.message = `could not remove the token: ${error.message}`
@@ -699,11 +750,12 @@ const onSettingsKey = key => {
 
     return
   }
-  if (shortcut.auth?.from === 'env') return
+  const source = sources[state.tab]
+  if (source.auth?.from === 'env') return
   if (key === 'e' || key === 'E') {
-    shortcut.form.editing = true
-    shortcut.form.input = ''
-    shortcut.form.error = null
+    source.form.editing = true
+    source.form.input = ''
+    source.form.error = null
     state.view = 'list'
   } else if (key === 'x' || key === 'X') state.confirmRemove = true
 }
@@ -714,8 +766,8 @@ const onFilterScreenKey = key => {
     const action = state.peoplePicker.key(key)
     if (action === 'cancel') state.peoplePicker = null
     if (action === 'pick') {
-      const [field] = FILTER_FIELDS[state.filterRow]
-      setFilter({ ...state.scFilter, [field]: state.peoplePicker.current().value })
+      const row = filterRows()[state.filterRow]
+      if (row) setFilter(row.id, { ...sources[row.id].filter, [row.field]: state.peoplePicker.current().value })
       state.peoplePicker = null
     }
 
@@ -727,15 +779,18 @@ const onFilterScreenKey = key => {
 
     return
   }
-  if (isDown(key) || key === '\t') state.filterRow = Math.min(FILTER_FIELDS.length - 1, state.filterRow + 1)
+  const rows = filterRows()
+  if (isDown(key) || key === '\t') state.filterRow = Math.min(rows.length - 1, state.filterRow + 1)
   else if (isUp(key) || key === '\x1b[Z') state.filterRow = Math.max(0, state.filterRow - 1)
   else if (isEnter(key) || key === 'l') openPeoplePicker()
-  else if ((key === 'x' || key === 'X') && (state.scFilter.owner || state.scFilter.requester)) setFilter({ owner: null, requester: null })
+  else if (key === 'x' || key === 'X') {
+    for (const id of filterRemotes()) if (Object.values(sources[id].filter).some(Boolean)) setFilter(id, {})
+  }
 }
 
 const onKey = key => {
   if (state.view === 'launch') return state.launcher.key(key)
-  if (state.view === 'sc-filter') return onFilterScreenKey(key)
+  if (state.view === 'filter') return onFilterScreenKey(key)
   if (state.view === 'detail') return onDetailKey(key)
   if (state.view === 'settings') return onSettingsKey(key)
 
@@ -747,13 +802,14 @@ const onKey = key => {
 if (!process.stdin.isTTY || !process.stdout.isTTY) {
   const wanted = String(args.values.source ?? 'github').toLowerCase()
   if (!TABS.includes(wanted)) {
-    console.error(`unknown --source "${wanted}" (use github, shortcut or all)`)
+    console.error(`unknown --source "${wanted}" (use ${TABS.slice(1).join(', ')} or all)`)
     process.exit(2)
   }
+  const list = wanted === 'all' ? needed : [wanted]
   const closed = args.flags.has('closed')
   const out = { issues: [] }
   const problems = []
-  if (wanted !== 'shortcut') {
+  if (list.includes('github')) {
     try {
       await resolveRepo()
       out.repo = target.repo
@@ -763,28 +819,30 @@ if (!process.stdin.isTTY || !process.stdout.isTTY) {
       problems.push(`GitHub: ${error.message}`)
     }
   }
-  if (wanted !== 'github') {
+  for (const id of list.filter(source => REMOTES[source])) {
+    const remote = REMOTES[id]
     try {
-      if (!shortcut.auth) throw new Error(`not set up: add a token in the Shortcut tab of the issues popup, or set ${TOKEN_ENV}`)
-      const token = shortcut.auth.token
-      const [me, lookups] = await Promise.all([currentMember(token), loadLookups(token)])
-      out.shortcut = { workspace: me.workspace, team: config.shortcut.team || null }
+      if (!sources[id].auth) throw new Error(notSetUp(remote).replace(`${remote.name} is `, ''))
+      const token = sources[id].auth.token
+      const [me, lookups] = await Promise.all([remote.whoami(token), remote.lookups(token)])
+      out[id] = { workspace: me.workspace, team: remote.team(config) || null }
+      // "me" is the token's owner.
       const asFilter = value => (value === 'me' ? ME : value)
-      const people = resolveFilter(normalizeFilter({ owner: asFilter(args.values.owner), requester: asFilter(args.values.requester) }), me)
-      out.issues.push(...(await listStories(token, { query: config.shortcut.query, team: config.shortcut.team, closed, limit: config.limit, lookups, ...people })))
+      const filter = remote.filter.normalize(Object.fromEntries(remote.filter.names.map(field => [field, asFilter(args.values[field])])))
+      out.issues.push(...(await remote.list(token, { config, closed, limit: config.limit, lookups, filter, me })))
     } catch (error) {
-      problems.push(`Shortcut: ${error.message}`)
+      problems.push(`${remote.name}: ${error.message}`)
     }
   }
   out.issues = mergeByUpdated([out.issues])
   for (const problem of problems) console.error(problem)
-  if (problems.length && (wanted !== 'all' || problems.length === 2)) process.exit(1)
+  if (problems.length && (wanted !== 'all' || problems.length === list.length)) process.exit(1)
   if (args.flags.has('json')) console.log(JSON.stringify(out, null, 2))
   else {
-    const unit = { github: ['issue'], shortcut: ['story', 'stories'], all: ['item'] }[wanted]
-    console.log(`${[out.repo, out.shortcut?.workspace].filter(Boolean).join(' + ')} · ${plural(out.issues.length, ...unit)}`)
+    const unit = REMOTES[wanted] ? [REMOTES[wanted].noun, REMOTES[wanted].plural] : [wanted === 'all' ? 'item' : 'issue']
+    console.log(`${[out.repo, ...REMOTE_SOURCES.map(id => out[id]?.workspace)].filter(Boolean).join(' + ')} · ${plural(out.issues.length, ...unit)}`)
     for (const issue of out.issues) {
-      const flags = [issue.closed ? 'closed' : '', issue.source === 'shortcut' ? stateText(issue) : '', labelText(issue)].filter(Boolean).join(', ')
+      const flags = [issue.closed ? 'closed' : '', isRemote(issue) ? stateText(issue) : '', labelText(issue)].filter(Boolean).join(', ')
       console.log(`${issue.ref.padEnd(8)} ${issue.title}${flags ? `  [${flags}]` : ''}`)
     }
   }

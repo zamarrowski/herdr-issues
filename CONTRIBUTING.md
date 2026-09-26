@@ -12,8 +12,9 @@ Thanks for taking the time. Bug reports, agent quirks, documentation fixes and f
 
 ## Development setup
 
-You need herdr ≥ 0.9.0, Node.js ≥ 20, git and `gh` (logged in). A Shortcut token only if you want to
-try the Shortcut tab against a real workspace; the tests use a local fake (`test/fixtures/fake-shortcut.mjs`).
+You need herdr ≥ 0.9.0, Node.js ≥ 20, git and `gh` (logged in). A Shortcut token or a Linear API key
+only if you want to try those tabs against a real workspace; the tests use local fakes
+(`test/fixtures/fake-shortcut.mjs`, `test/fixtures/fake-linear.mjs`).
 
 ```sh
 git clone https://github.com/zamarrowski/herdr-issues.git
@@ -47,15 +48,18 @@ Starting an issue needs a running herdr and works from any terminal as long as `
 ## Project layout
 
 ```
-herdr-plugin.toml     manifest: actions (open, start, setup), popups (browser, start, setup), link handlers (GitHub, Shortcut)
+herdr-plugin.toml     manifest: actions (open, start, setup), popups (browser, start, setup), link handlers (GitHub, Shortcut, Linear)
 bin/run.sh            finds Node.js and runs a script
 lib/paths.mjs         plugin id, config/state directories
 lib/config.mjs        defaults, config.json loading and validation, templates, agent resolution
 lib/context.mjs       HERDR_PLUGIN_CONTEXT_JSON and which checkout to use
 lib/github.mjs        gh wrapper: repo, issue list/view, URL parsing
-lib/shortcut.mjs      Shortcut REST client (fetch): member, stories, lookups, story refs, token lookup
-lib/sources.mjs       the shared record shape, tabs, reference routing between GitHub and Shortcut
-lib/secrets.mjs       secrets.json (the Shortcut token typed in the popup), mode 0600
+lib/integration.mjs   what every token integration shares: token lookup, fetchJson, people filter, checklist
+lib/shortcut.mjs      Shortcut REST client (fetch) and its adapter
+lib/linear.mjs        Linear GraphQL client (fetch) and its adapter
+lib/remotes.mjs       the list of token integrations, and the adapter interface they implement
+lib/sources.mjs       the shared record shape, tabs, reference routing between GitHub, Shortcut and Linear
+lib/secrets.mjs       secrets.json (the Shortcut token and Linear key typed in the popup), mode 0600
 lib/cache.mjs         last list per source and project, and the last tab
 lib/herdr.mjs         herdr CLI wrapper: worktree, agent, notification, metadata
 lib/start.mjs         the start flow (worktree → agent → prompt), agent-agnostic
@@ -104,8 +108,8 @@ Design rules worth knowing:
 npm test
 ```
 
-Tests use `node:test` and never touch the network (the Shortcut client talks to a local
-`node:http` fake, `test/fixtures/fake-shortcut.mjs`), the user's herdr or `~/.config` (`npm ci` once,
+Tests use `node:test` and never touch the network (the Shortcut and Linear clients talk to local
+`node:http` fakes, `test/fixtures/fake-shortcut.mjs` and `test/fixtures/fake-linear.mjs`), the user's herdr or `~/.config` (`npm ci` once,
 so the highlight.js tests can run). herdr is replaced
 by `test/fixtures/fake-herdr`, which records every call and answers according to
 `FAKE_HERDR_SCENARIO` (see the file for the scenarios: `happy`, `branch-exists`, `already-open`,
@@ -125,6 +129,24 @@ after a UI change:
 ```sh
 sh tools/screenshots/make.sh        # needs expect (preinstalled on macOS; apt install expect elsewhere)
 ```
+
+## Adding an issue tracker
+
+GitHub goes through `gh`; every other tracker is an integration with an API token of its own, and the
+popups, the start flow and the setup checks only see it through its adapter. Adding one (say Jira):
+
+1. `lib/jira.mjs`: the API client on top of `lib/integration.mjs` (`tokenFrom`, `fetchJson`, `ApiError`,
+   `peopleFilter`, `checklist`), records normalised to the shape in `lib/sources.mjs`, and
+   `export const remote = { … }`, the adapter described at the top of `lib/remotes.mjs`.
+2. `lib/remotes.mjs`: add it to the list. That gives it a tab, the token form, the settings screen, the
+   people filter, reference parsing for the start popup, `--source jira` and the setup check.
+3. `lib/config.mjs`: its tab in `DEFAULTS.tabs`, its block in `DEFAULTS` (`team`, `branch`, `agent_name`…)
+   and in `SOURCE_BLOCKS` for validation; the same block in `config.example.json`.
+4. `herdr-plugin.toml`: a `[[link_handlers]]` entry with the adapter's `link.id` and `link.pattern`.
+5. Tests: a `node:http` fake in `test/fixtures/` and a `test/jira.test.mjs` like the Shortcut and Linear
+   ones. `test/remotes.test.mjs` checks every adapter against the interface, the manifest and the config,
+   so it tells you what is still missing.
+6. README, `docs/configuration.md` and `CHANGELOG.md`.
 
 ## Adding support for an agent's startup dialog
 

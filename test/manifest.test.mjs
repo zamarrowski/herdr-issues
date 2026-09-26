@@ -47,7 +47,7 @@ describe('herdr-plugin.toml', () => {
   it('has the expected actions, panes and link handlers', () => {
     assert.deepEqual(actions.map(a => a.id).sort(), ['open', 'setup', 'start'])
     assert.deepEqual(panes.map(p => p.id).sort(), ['browser', 'setup', 'start'])
-    assert.deepEqual(handlers.map(h => h.id), ['github-issue', 'shortcut-story'], 'one link handler per source')
+    assert.deepEqual(handlers.map(h => h.id), ['github-issue', 'shortcut-story', 'linear-issue'], 'one link handler per source')
     for (const handler of handlers) assert.equal(handler.action, 'start')
   })
 
@@ -91,10 +91,22 @@ describe('herdr-plugin.toml', () => {
     assert.ok(!pattern.test('https://github.com/acme/shop/issues/482'))
   })
 
+  it('matches Linear issue URLs and nothing else with the Linear pattern', () => {
+    const pattern = new RegExp(handlers.find(h => h.id === 'linear-issue').pattern)
+    assert.ok(pattern.test('https://linear.app/acme/issue/ENG-123'))
+    assert.ok(pattern.test('https://linear.app/acme/issue/ENG-123/returns-page'))
+    assert.ok(pattern.test('https://linear.app/acme/issue/eng-123#comment-1'))
+    assert.ok(!pattern.test('https://linear.app/acme/project/returns-1234'))
+    assert.ok(!pattern.test('https://linear.app/acme/team/ENG/active'))
+    assert.ok(!pattern.test('https://linear.app/acme/issue/ENG'))
+    assert.ok(!pattern.test('https://github.com/acme/shop/issues/482'))
+  })
+
   it('parses what its link handlers match', async () => {
     const { parseRef } = await import('../lib/sources.mjs')
     assert.equal(parseRef('https://github.com/acme/shop/issues/482').source, 'github')
     assert.equal(parseRef('https://app.shortcut.com/acme/story/482/returns-page').source, 'shortcut')
+    assert.equal(parseRef('https://linear.app/acme/issue/ENG-123/returns-page').source, 'linear')
   })
 })
 
@@ -115,6 +127,7 @@ describe('package.json', () => {
     for (const key of Object.keys(example)) assert.ok(key.startsWith('$') || key in DEFAULTS, `config.example.json has unknown "${key}"`)
     assert.deepEqual(example.timeouts, { ...DEFAULTS.timeouts })
     assert.deepEqual(example.shortcut, { ...DEFAULTS.shortcut })
+    assert.deepEqual(example.linear, { ...DEFAULTS.linear })
     assert.deepEqual(example.tabs, [...DEFAULTS.tabs])
   })
 })
