@@ -57,6 +57,13 @@ describe('parseInline', () => {
       ['SC-7', c.green],
       ['] misc-3', ''],
     ])
+    assert.deepEqual(parseInline('fixes ENG-123 (WEB-7) not eng-1').map(s => [s.text, s.style]), [
+      ['fixes ', ''],
+      ['ENG-123', c.green],
+      [' (', ''],
+      ['WEB-7', c.green],
+      [') not eng-1', ''],
+    ])
   })
   it('leaves unbalanced markers alone', () => {
     assert.deepEqual(parseInline('**oops and `tick'), [{ text: '**oops and `tick', style: '' }])

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import { DEFAULTS, merge } from '../lib/config.mjs'
 import { issueVars, planIssue, startIssue } from '../lib/start.mjs'
-import { commandsOf, find, sampleIssue, sampleStory, withFakeHerdr } from './helpers.mjs'
+import { commandsOf, find, sampleIssue, sampleLinear, sampleStory, withFakeHerdr } from './helpers.mjs'
 
 // Short timeouts keep the retry loops fast; the fake herdr answers instantly anyway.
 const fastConfig = (overrides = {}) => merge(DEFAULTS, { timeouts: { agent_ready_ms: 50, submit_check_ms: 50, retry_ms: 10 } }, overrides)
@@ -70,6 +70,23 @@ describe('planIssue for a Shortcut story', () => {
   })
 })
 
+describe('planIssue for a Linear issue', () => {
+  it('uses the linear templates: the identifier in the branch, the label and the agent name', () => {
+    const plan = planIssue({ issue: sampleLinear(), repo: 'shop', config: DEFAULTS, agent: 'codex' })
+    assert.equal(plan.branch, 'ENG-123-returns-page-crashes-on-empty-address')
+    assert.equal(plan.label, 'ENG-123 Returns page crashes on empty a…')
+    assert.equal(plan.agentName, 'eng-123')
+    assert.equal(plan.prompt, 'https://linear.app/acme/issue/ENG-123/returns-page-crashes-on-empty-address')
+    assert.equal(plan.vars.source, 'linear')
+    assert.equal(plan.vars.number, 123)
+  })
+  it("offers Linear's own branch name as {vcs_branch}", () => {
+    const plan = planIssue({ issue: sampleLinear(), repo: 'shop', config: merge(DEFAULTS, { linear: { branch: '{vcs_branch}' } }) })
+    assert.equal(plan.branch, 'ana/eng-123-returns-page-crashes-on-empty-address')
+    assert.equal(planIssue({ issue: sampleIssue(), repo, config: DEFAULTS }).vars.vcs_branch, '')
+  })
+})
+
 describe('startIssue', () => {
   const issue = sampleIssue()
   const base = { cwd: '/repo', workspaceId: 'w1', issue, repo }
@@ -130,6 +147,42 @@ describe('startIssue', () => {
     assert.equal(find(calls, 'notification', 'show')[0][2], 'Story sc-482')
     assert.equal(steps.at(-1), 'Typing story sc-482 into codex')
     assert.equal(result.agent, 'sc-482')
+  })
+
+  it('starts a Linear issue with its identifier in the token, the steps and the toast', async () => {
+    const steps = []
+    const { result, calls } = await withFakeHerdr('happy', () =>
+      startIssue({ cwd: '/code/api', workspaceId: 'w3', issue: sampleLinear(), repo: 'api', agent: 'codex', config: fastConfig(), onStep: text => steps.push(text) }),
+    )
+    assert.ok(find(calls, 'worktree', 'create')[0].includes('ENG-123-returns-page-crashes-on-empty-address'))
+    assert.ok(find(calls, 'workspace', 'report-metadata')[0].includes('issue=ENG-123'))
+    assert.equal(find(calls, 'agent', 'start')[0][2], 'eng-123')
+    assert.equal(find(calls, 'notification', 'show')[0][2], 'Issue ENG-123')
+    assert.equal(steps.at(-1), 'Typing issue ENG-123 into codex')
+    assert.equal(result.agent, 'eng-123')
+  })
+
+  it('opens a new tab instead of a worktree in a workspace without git', async () => {
+    const steps = []
+    const { result, calls } = await withFakeHerdr('happy', () =>
+      startIssue({ cwd: '/home/ana/notes', workspaceId: 'w2', tab: true, issue: sampleLinear(), repo: 'notes', agent: 'claude', config: fastConfig(), onStep: text => steps.push(text) }),
+    )
+    assert.deepEqual(find(calls, 'tab', 'create')[0], ['tab', 'create', '--workspace', 'w2', '--cwd', '/home/ana/notes', '--label', 'ENG-123 Returns page crashes on empty a…', '--focus'])
+    assert.deepEqual(find(calls, 'workspace', 'focus')[0], ['workspace', 'focus', 'w2'])
+    assert.equal(find(calls, 'worktree', 'create').length, 0)
+    assert.equal(find(calls, 'workspace', 'report-metadata').length, 0, 'the workspace is not the issue\'s own')
+    assert.equal(find(calls, 'agent', 'start')[0][4], 'claude')
+    assert.equal(find(calls, 'agent', 'start')[0][6], 'w2:p7')
+    assert.deepEqual(steps, ['Opening a new tab', 'Starting claude in the new tab', 'Typing issue ENG-123 into claude'])
+    assert.equal(result.mode, 'tab')
+    assert.equal(result.branch, null)
+    assert.equal(result.tabId, 'w2:t7')
+    assert.equal(result.workspaceId, 'w2')
+    assert.equal(result.delivery, 'typed')
+  })
+
+  it('refuses a new tab without a workspace', async () => {
+    await assert.rejects(startIssue({ cwd: '/x', tab: true, issue: sampleLinear(), repo: 'x', agent: 'claude', config: fastConfig() }), /needs a workspace/)
   })
 
   it('sends the prompt and confirms the agent reacted with submit: true', async () => {

@@ -32,6 +32,20 @@ export const withFakeHerdr = async (scenario, fn) => {
   }
 }
 
+// Sets environment variables for the duration of `fn` (async), then restores them.
+export const withEnv = async (vars, fn) => {
+  const saved = Object.fromEntries(Object.keys(vars).map(name => [name, process.env[name]]))
+  Object.assign(process.env, vars)
+  try {
+    return await fn()
+  } finally {
+    for (const [name, value] of Object.entries(saved)) {
+      if (value === undefined) delete process.env[name]
+      else process.env[name] = value
+    }
+  }
+}
+
 export const sampleIssue = (overrides = {}) => ({
   number: 482,
   title: 'Returns page crashes on empty address',
@@ -65,6 +79,28 @@ export const sampleStory = (overrides = {}) => ({
   createdAt: '2026-09-10T09:00:00Z',
   updatedAt: '2026-09-19T20:00:00Z',
   workspace: 'acme',
+  ...overrides,
+})
+
+// A normalised Linear issue, as lib/linear.mjs returns it.
+export const sampleLinear = (overrides = {}) => ({
+  source: 'linear',
+  number: 123,
+  ref: 'ENG-123',
+  id: 'uuid-123',
+  title: 'Returns page crashes on empty address',
+  url: 'https://linear.app/acme/issue/ENG-123/returns-page-crashes-on-empty-address',
+  closed: false,
+  state: 'OPEN',
+  stateName: 'In Progress',
+  priority: 'High',
+  labels: [{ name: 'Bug' }],
+  assignees: [{ login: 'ana' }],
+  author: { login: 'cy' },
+  createdAt: '2026-09-10T09:00:00Z',
+  updatedAt: '2026-09-20T20:00:00Z',
+  workspace: 'acme',
+  vcsBranch: 'ana/eng-123-returns-page-crashes-on-empty-address',
   ...overrides,
 })
 

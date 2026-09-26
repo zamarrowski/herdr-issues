@@ -3,7 +3,8 @@ import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import { describe, it } from 'node:test'
-import { pickCwd, pickRepo, readContext, repoCandidates, resolveTarget } from '../lib/context.mjs'
+import { describeWorkspaces, pickCwd, pickRepo, readContext, repoCandidates, resolveTarget } from '../lib/context.mjs'
+import { gitRepo } from '../lib/proc.mjs'
 import { tempDir } from './helpers.mjs'
 
 const gitInit = dir => {
@@ -89,5 +90,58 @@ describe('repoCandidates', () => {
     assert.equal(items[preferred].id, 'tool')
     assert.equal(items[preferred].workspaceId, 'w2')
     assert.equal(items.length, 3)
+  })
+})
+
+describe('describeWorkspaces', () => {
+  const workspaces = [
+    { workspace_id: 'w1', label: 'shop', active_tab_id: 'w1:t1', worktree: { checkout_path: '/code/shop', is_linked_worktree: false, repo_key: '/code/shop/.git', repo_name: 'shop', repo_root: '/code/shop' } },
+    { workspace_id: 'w2', label: 'claudemon', active_tab_id: 'w2:t2' },
+    { workspace_id: 'w3', label: 'notes', active_tab_id: 'w3:t1' },
+    { workspace_id: 'w4', label: 'empty' },
+  ]
+  const panes = [
+    { workspace_id: 'w1', tab_id: 'w1:t1', pane_id: 'w1:p1', cwd: '/code/shop/src' },
+    { workspace_id: 'w2', tab_id: 'w2:t1', pane_id: 'w2:p1', cwd: '/elsewhere' },
+    { workspace_id: 'w2', tab_id: 'w2:t2', pane_id: 'w2:p2', cwd: '/code/claudemon', foreground_cwd: '/code/claudemon/lib', focused: true },
+    { workspace_id: 'w3', tab_id: 'w3:t1', pane_id: 'w3:p1', cwd: '/home/ana/notes' },
+  ]
+  const detect = async cwd => (cwd.startsWith('/code/claudemon') ? { checkout: '/code/claudemon', key: '/code/claudemon/.git', root: '/code/claudemon', linked: false } : null)
+  it("finds the checkouts herdr did not recognise from the active tab's pane", async () => {
+    const [shop, claudemon, notes, empty] = await describeWorkspaces(workspaces, panes, detect)
+    assert.equal(shop.worktree.repo_root, '/code/shop')
+    assert.equal(shop.detected, undefined)
+    assert.equal(claudemon.cwd, '/code/claudemon/lib')
+    assert.deepEqual(claudemon.worktree, { checkout_path: '/code/claudemon', is_linked_worktree: false, repo_key: '/code/claudemon/.git', repo_name: 'claudemon', repo_root: '/code/claudemon' })
+    assert.equal(claudemon.detected, true)
+    assert.equal(notes.worktree, undefined)
+    assert.equal(notes.cwd, '/home/ana/notes')
+    assert.equal(empty.cwd, null)
+  })
+  it('lists repositories first, then a new tab for each workspace without git', async () => {
+    const { items, preferred } = repoCandidates(await describeWorkspaces(workspaces, panes, detect), { workspaceId: 'w3' })
+    assert.deepEqual(
+      items.map(item => [item.id, item.workspaceId, Boolean(item.tab)]),
+      [
+        ['claudemon', null, false],
+        ['shop', 'w1', false],
+        ['notes', 'w3', true],
+      ],
+      'a detected checkout is started with --cwd, since herdr does not know it as a repository',
+    )
+    assert.equal(items[2].cwd, '/home/ana/notes')
+    assert.match(items[2].note, /new tab$/)
+    assert.equal(preferred, 2, 'the workspace the popup came from')
+  })
+  it('reads the real git layout of a checkout and of a linked worktree', async () => {
+    const dir = tempDir()
+    gitInit(dir)
+    execFileSync('git', ['-C', dir, 'commit', '-q', '--allow-empty', '-m', 'x'], { env: { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t' } })
+    const real = fs.realpathSync(dir)
+    assert.deepEqual(await gitRepo(dir), { checkout: real, key: path.join(real, '.git'), root: real, linked: false })
+    const linked = path.join(tempDir(), 'wt')
+    execFileSync('git', ['-C', dir, 'worktree', 'add', '-q', linked])
+    assert.deepEqual(await gitRepo(linked), { checkout: fs.realpathSync(linked), key: path.join(real, '.git'), root: real, linked: true })
+    assert.equal(await gitRepo(tempDir()), null)
   })
 })

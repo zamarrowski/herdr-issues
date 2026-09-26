@@ -5,9 +5,9 @@
 [![herdr ≥ 0.9.0](https://img.shields.io/badge/herdr-%E2%89%A5%200.9.0-black)](https://herdr.dev)
 [![Dependencies: highlight.js](https://img.shields.io/badge/dependencies-highlight.js-brightgreen)](package.json)
 
-A [herdr](https://herdr.dev) plugin that shows the GitHub issues of the repository you are in, and the
-stories of your [Shortcut](https://shortcut.com) workspace, and hands any of them to a coding agent in its
-own git worktree. Claude Code, Codex, Gemini CLI, Pi, OpenCode,
+A [herdr](https://herdr.dev) plugin that shows the GitHub issues of the repository you are in, the
+stories of your [Shortcut](https://shortcut.com) workspace and the issues of your
+[Linear](https://linear.app) workspace, and hands any of them to a coding agent in its own git worktree. Claude Code, Codex, Gemini CLI, Pi, OpenCode,
 Cursor, Copilot, Droid, Amp… whatever herdr can start, this plugin can hand an issue to.
 
 <p align="center">
@@ -30,8 +30,8 @@ in the config and let the plugin send it.
 
 ## What it does
 
-- **Browse.** Open issues newest first, with labels, assignees and age, in three tabs: **All**,
-  **GitHub** (the repository of your pane) and **Shortcut** (your workspace). `tabs` in the config
+- **Browse.** Open issues newest first, with labels, assignees and age, in four tabs: **All**,
+  **GitHub** (the repository of your pane), **Shortcut** and **Linear** (your workspaces). `tabs` in the config
   decides which ones you see. `/` filters as you type, `c`
   includes closed issues, `Enter` shows the description and the comments rendered as Markdown
   (headings, lists, task lists, syntax-highlighted code blocks, quotes, links, `#123` and
@@ -45,11 +45,16 @@ in the config and let the plugin send it.
   per agent kind (`--full-auto`, `--add-dir …`).
 - **Shortcut stories.** The Shortcut tab asks for an API token the first time and remembers it. Stories
   show their workflow state, tasks and comments, and start on an `sc-482-…` branch, which Shortcut links
-  to the story. A story belongs to no repository, so the plugin asks which one to work in.
-- **Ctrl+click.** Any GitHub issue URL or Shortcut story URL in any pane becomes a "start this" link.
+  to the story. A story belongs to no repository, so the plugin asks where to work: any workspace open
+  in herdr, with a worktree in a repository or a new tab in a workspace without git.
+- **Linear issues.** The Linear tab works the same way with a personal API key. Issues show their
+  state, priority, project, cycle, sub-issues and comments, and start on an `ENG-123-…` branch, which
+  Linear links to the issue.
+- **Ctrl+click.** Any GitHub issue URL, Shortcut story URL or Linear issue URL in any pane becomes a
+  "start this" link.
 - **Scriptable.** The same flow runs from a shell, a script or another agent: `start.mjs 482 --agent
   codex`, JSON output included.
-- **Sidebar label.** The new workspace carries an `issue` token (`#482`) you can show in the herdr sidebar.
+- **Sidebar label.** The new workspace carries an `issue` token (`#482`, `sc-482`, `ENG-123`) you can show in the herdr sidebar.
 - **One dependency.** [highlight.js](https://highlightjs.org) colours the code blocks; herdr fetches it
   when you install the plugin, and without it everything still works with plain code blocks. The rest is
   the Node.js standard library. GitHub through the `gh` CLI you already have, herdr through its own CLI.
@@ -63,6 +68,8 @@ in the config and let the plugin send it.
 - **git**, and a local checkout of the repository (starting an issue creates a worktree of it)
 - For Shortcut stories: a Shortcut API token (Shortcut → Settings → Your account → API Tokens). The
   Shortcut tab asks for it; `gh` is only needed for the GitHub side.
+- For Linear issues: a Linear personal API key (Linear → Settings → Security & access → Personal API
+  keys). The Linear tab asks for it.
 - macOS or Linux
 
 ## Install
@@ -120,24 +127,24 @@ repository is inferred from the focused pane's directory (through `gh`, so forks
 `gh repo set-default` are honoured); outside a repository the GitHub tab says so and the other tabs
 keep working.
 
-The popup has three tabs, **All**, **GitHub** and **Shortcut**, and opens on the last one you used.
-Hide the ones you do not want with `tabs` in `config.json`, for example `"tabs": ["github"]` for
-GitHub only, or `"tabs": ["shortcut", "github"]` to have Shortcut first and no All tab.
+The popup has four tabs, **All**, **GitHub**, **Shortcut** and **Linear**, and opens on the last one
+you used. Hide the ones you do not want with `tabs` in `config.json`, for example `"tabs": ["github"]`
+for GitHub only, or `"tabs": ["linear", "github"]` to have Linear first and no All or Shortcut tab.
 
 ### Browsing
 
 | Key | Action |
 | --- | --- |
-| `Tab` / `Shift+Tab`, `1` `2` `3` | switch tab |
+| `Tab` / `Shift+Tab`, `1` `2` `3` `4` | switch tab |
 | `j` `k` / arrows, `g` `G` | move |
 | `Enter` / `l` | read the issue: description and comments (`j` `k` / `space` scroll, `m` raw text instead of rendered Markdown, `Esc` back) |
 | `s` | **start** the issue (confirmation first) |
 | `o` | open the issue in the browser |
-| `/` | filter by number, title, label, assignee, author, story state or type; `Esc` clears |
+| `/` | filter by number, title, label, assignee, author, state, story type or priority; `Esc` clears |
 | `c` | include closed issues |
 | `r` | refresh |
-| `f` | Shortcut owner / requester filter (Shortcut and All tabs), remembered between popups |
-| `,` | Shortcut settings (Shortcut tab): replace or remove the token |
+| `f` | people filter, remembered between popups: Shortcut owner / requester, Linear assignee / creator (their tabs, and both on All) |
+| `,` | Shortcut or Linear settings (on its tab): replace or remove the token |
 | `q` / `Esc` | quit |
 
 Reading an issue renders its Markdown, code blocks included:
@@ -166,26 +173,51 @@ If you already manage the token elsewhere, export `SHORTCUT_API_TOKEN` instead: 
 and the popup never asks. To list one team's stories only, or to change the search, set
 `shortcut.team` or `shortcut.query` (see [docs/configuration.md](docs/configuration.md#shortcut)).
 
-A story is linked to no repository, so starting one first asks which repository to create the
-worktree in. The list holds every repository open as a herdr workspace, with the repository of the
-pane you opened the popup from preselected: press Enter to take it. The branch is
-`sc-482-<slug>`, which Shortcut's VCS integration attaches to the story.
+A story is linked to no repository, so starting one first asks where to work. The list holds every
+workspace open in herdr, the workspace you opened the popup from preselected (press Enter to take it):
+
+- a **repository** (listed once, whichever of its worktrees are open, and found with git even when
+  herdr does not show it as one) gets a new worktree on `sc-482-<slug>`, which Shortcut's VCS
+  integration attaches to the story, opened as a workspace, as for a GitHub issue;
+- a **workspace that is not a git checkout** (marked *new tab*) gets a new tab, in the directory of
+  its pane, with the agent and the prompt: no branch, nothing else changes in that workspace.
 
 The prompt is the story URL, like for GitHub. An agent can only open it with access to Shortcut,
 such as Shortcut's MCP server; see [docs/configuration.md](docs/configuration.md#shortcut) for a
 prompt that works without it.
 
+### Linear
+
+The Linear tab works like the Shortcut one. The first time, it asks for a personal API key: create one
+in Linear under Settings → Security & access → Personal API keys, paste it and press Enter. The plugin
+checks it against the API (`@ana in acme`) and saves it in the same `secrets.json`. From then on the
+tab lists the issues of the workspace that are not completed or canceled, newest updated first, with
+their state; `c` adds the completed and canceled ones.
+
+`f` filters by **assignee** and **creator** (*anyone*, *me* or any member), inside the Linear query, and
+is remembered like the Shortcut filter. `,` opens the Linear settings (`e` replaces the key, `x`
+removes it). `LINEAR_API_KEY`, when set, takes precedence and the popup never asks. To list one team's
+issues only, set `linear.team` to its key (`ENG`); `linear.filter` adds conditions of your own, such as
+a project or a priority (see [docs/configuration.md](docs/configuration.md#linear)).
+
+Reading an issue shows its state, priority, project, cycle, estimate and parent, the description with
+the sub-issues as a checklist, and the comments. Starting one asks where to work, like a story (a
+repository gets a worktree, a workspace without git a new tab), and the branch is `ENG-123-<slug>`, which Linear's git integration links to the issue. Linear's own
+branch name (`ana/eng-123-…`, what "Copy git branch name" gives you) is available as `{vcs_branch}`
+if you would rather match it. The prompt is the issue URL; pair it with Linear's MCP server, or see
+[docs/configuration.md](docs/configuration.md#linear) for a prompt that works without it.
+
 ### Starting
 
-The confirmation screen shows the agent, the branch, the workspace label and the prompt (and the
-repository, for a story):
+The confirmation screen shows the agent, the branch, the workspace label and the prompt (and where it
+runs, for a story or a Linear issue; in a new tab there is no branch, and the label goes on the tab):
 
 | Key | Action |
 | --- | --- |
 | `y` | start |
 | `d` | start and save this agent as the default in `config.json` |
 | `a` | choose another agent (arrows move, letters filter, `Enter` picks) |
-| `r` | choose another repository (stories) |
+| `r` | choose somewhere else to work (stories and Linear issues) |
 | `Esc` | cancel |
 
 When it finishes the popup closes and the new workspace is focused. If something fails, the failing
@@ -196,10 +228,11 @@ step is shown in red and any key takes you back.
 Any `https://github.com/<owner>/<repo>/issues/<n>` link printed in a pane (a `gh` listing, an agent's
 answer, a commit message) can be Ctrl+clicked: the start popup opens with the issue loaded. It has to
 be an issue of the repository the pane is in; otherwise the popup says so. A
-`https://app.shortcut.com/<workspace>/story/<id>` link works the same way, and asks for the repository.
+`https://app.shortcut.com/<workspace>/story/<id>` or `https://linear.app/<workspace>/issue/ENG-123` link
+works the same way, and asks where to work.
 
 The same popup opens from the `zamarrowski.issues.start` action (bound above to `prefix+shift+i`) and
-asks for a number, `sc-<id>` or URL.
+asks for a number, `sc-<id>`, a Linear key such as `ENG-123`, or a URL.
 
 ### From a terminal or from an agent
 
@@ -210,10 +243,12 @@ cd /path/to/herdr-issues        # or the directory `herdr plugin list` prints as
 
 sh bin/run.sh scripts/issues.mjs --cwd ~/code/shop                 # list open issues
 sh bin/run.sh scripts/issues.mjs --cwd ~/code/shop --closed --json # everything, as JSON
-sh bin/run.sh scripts/issues.mjs --source shortcut --owner me      # Shortcut stories (--source all: both)
+sh bin/run.sh scripts/issues.mjs --source shortcut --owner me      # Shortcut stories (--source all: every tab)
+sh bin/run.sh scripts/issues.mjs --source linear --assignee me     # Linear issues (--creator NAME|me too)
 sh bin/run.sh scripts/start.mjs 482 --cwd ~/code/shop --agent codex
 sh bin/run.sh scripts/start.mjs https://github.com/acme/shop/issues/482 --cwd ~/code/shop --no-agent   # worktree only
 sh bin/run.sh scripts/start.mjs sc-482 --cwd ~/code/shop --agent claude   # a story, in the checkout of --cwd
+sh bin/run.sh scripts/start.mjs ENG-123 --cwd ~/code/shop --agent claude  # a Linear issue, likewise
 sh bin/run.sh scripts/setup.mjs --check                             # environment checks, exit 1 on failure
 ```
 
@@ -255,24 +290,25 @@ on macOS and Linux). Create it from [`config.example.json`](config.example.json)
 
 | Key | Default | What it does |
 | --- | --- | --- |
-| `tabs` | `["all", "github", "shortcut"]` | tabs of the popup, in this order |
+| `tabs` | `["all", "github", "shortcut", "linear"]` | tabs of the popup, in this order |
 | `agent` | `"auto"` | agent kind, or `auto` for the one in your pane |
 | `agent_args` | `{}` | extra argv per agent kind, passed after `--` |
 | `agent_name` | `"issue-{number}"` | herdr agent name, so `herdr agent prompt issue-482 "…"` works later |
 | `branch` | `"issue-{number}-{slug}"` | branch of the new worktree |
 | `base` | `""` | base ref for the branch, e.g. `"origin/main"` (empty: herdr's default, the current HEAD) |
-| `label` | `"{ref} {title}"` | workspace label, cut to `label_max` (`{ref}` is `#482` or `sc-482`) |
+| `label` | `"{ref} {title}"` | workspace label, cut to `label_max` (`{ref}` is `#482`, `sc-482` or `ENG-123`) |
 | `prompt` | `"{url}"` | what is typed into the agent |
 | `submit` | `false` | press Enter for you; `false` leaves the prompt in the agent's input |
 | `focus` | `true` | focus the new workspace |
 | `notify` | `true` | herdr toast when the agent has the issue |
 | `workspace_token` | `true` | publish `$issue` for the sidebar |
 | `auto_accept_trust_prompt` | `true` | answer "trust this folder?" dialogs with Enter |
-| `limit` | `100` | issues (and stories) to list |
+| `limit` | `100` | issues (and stories) to list, per source |
 | `shortcut` | see below | `team`, `query`, and templates for stories: `branch` `sc-{number}-{slug}`, `agent_name` `sc-{number}` |
+| `linear` | see below | `team`, `filter`, and templates for Linear issues: `branch` `{ref}-{slug}`, `agent_name` `{ref}` |
 
 Templates accept `{number}` `{ref}` `{source}` `{title}` `{slug}` `{url}` `{repo}` `{owner}` `{name}` `{branch}` `{label}`
-`{agent}` `{author}` `{labels}`. The full reference, with the timeouts and the environment variables, is
+`{agent}` `{author}` `{labels}` `{vcs_branch}`. The full reference, with the timeouts and the environment variables, is
 in [docs/configuration.md](docs/configuration.md).
 
 ## How starting works
@@ -304,7 +340,7 @@ If a worktree for the issue is already open, the plugin focuses it and leaves it
 
 ## Sidebar label
 
-Each workspace created by the plugin carries an `issue` token (`#482`, or `sc-482` for a story). Show it by adding `$issue` to
+Each workspace created by the plugin carries an `issue` token (`#482`, `sc-482` for a story, `ENG-123` for a Linear issue). Show it by adding `$issue` to
 your space rows in `config.toml` (this is herdr's default layout with the token appended; merge it into
 your own rows if you have customised them), then `herdr server reload-config`:
 
@@ -318,17 +354,21 @@ rows = [
 
 ## Data and privacy
 
-- Nothing leaves your machine except the `gh` calls that list and read issues, the Shortcut API calls
-  that list and read stories, and, when you press `o`, opening the issue in your browser.
+- Nothing leaves your machine except the `gh` calls that list and read issues, the Shortcut and Linear
+  API calls that list and read stories and issues, and, when you press `o`, opening the issue in your
+  browser.
 - GitHub: no token is read or stored; `gh` uses its own login.
 - Shortcut: the token you type in the Shortcut tab is saved in `secrets.json` in the plugin config
   directory (`~/.config/herdr/plugins/config/zamarrowski.issues/secrets.json`) with mode `0600`, apart from
   `config.json` so the config can be shared. It is sent only to `api.app.shortcut.com`, in the
   `Shortcut-Token` header, and is never cached, logged or printed. `SHORTCUT_API_TOKEN` takes precedence
   and is never written anywhere. `x` in the Shortcut settings deletes the saved token.
+- Linear: the same, for the API key you type in the Linear tab. It is saved in the same `secrets.json`,
+  sent only to `api.linear.app` in the `Authorization` header, and never cached, logged or printed.
+  `LINEAR_API_KEY` takes precedence and is never written anywhere.
 - Installing runs `npm ci`, which downloads highlight.js (and nothing else) from the npm registry,
   pinned by `package-lock.json`. The plugin never talks to the registry afterwards.
-- The issue list is cached per repository, and the story list per workspace team, with titles and
+- The issue list is cached per repository, and the Shortcut and Linear lists per team and filter, with titles and
   metadata only, in the plugin state directory
   (`~/.local/state/herdr/plugins/zamarrowski.issues/issues/`). Delete it whenever you like.
 - The plugin never edits your herdr `config.toml` unless you press `k` in the setup popup or run
@@ -343,6 +383,11 @@ the setup popup (`herdr plugin action invoke zamarrowski.issues.setup`) runs the
   `e` replaces it; if it comes from `SHORTCUT_API_TOKEN`, fix it there.
 - **A story is missing** — the Shortcut tab shows stories that are not done or archived (`c` adds done
   ones), up to `limit`, filtered by `shortcut.team` and `shortcut.query` when you set them.
+- **"Linear rejected the API key"** — the key was revoked or mistyped. `,` on the Linear tab and `e`
+  replaces it; if it comes from `LINEAR_API_KEY`, fix it there.
+- **A Linear issue is missing** — the Linear tab shows issues that are not completed or canceled (`c`
+  adds them), up to `limit`, of `linear.team` when you set it and matching `linear.filter`. The setup
+  popup lists the team keys when `linear.team` matches none.
 - **"… is not inside a git repository"** — the popup uses the focused pane's directory. Open it from a
   pane inside the checkout, or pass `--cwd`.
 - **"gh: not logged in" / "could not resolve to a Repository"** — run `gh auth login`, and check that
@@ -370,7 +415,7 @@ herdr plugin uninstall zamarrowski.issues            # or `herdr plugin unlink z
 
 Remove the `# >>> zamarrowski.issues` block from `config.toml` (the setup popup's `u` does it), and
 delete `~/.config/herdr/plugins/config/zamarrowski.issues` (it holds `config.json` and the saved
-Shortcut token) and
+Shortcut token and Linear key) and
 `~/.local/state/herdr/plugins/zamarrowski.issues` if you want no trace left.
 
 ## Contributing

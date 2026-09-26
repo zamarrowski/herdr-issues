@@ -143,6 +143,22 @@ describe('tabs and the shortcut block', () => {
     assert.equal(config.shortcut.team, 'Backend')
     assert.equal(config.shortcut.branch, 'sc-{number}-{slug}')
   })
+  it('validates the linear block', () => {
+    assert.deepEqual(validate({ tabs: ['linear'], linear: { team: 'ENG', filter: { priority: { lte: 2 } }, branch: '{ref}-{slug}' } }), [])
+    const warnings = validate({ linear: { api_key: 'x', filter: 'priority', team: 1, query: '' } })
+    assert.ok(warnings.some(w => w.includes('"linear.api_key" is ignored')))
+    assert.ok(warnings.some(w => w.includes('"linear.filter" should be an object')))
+    assert.ok(warnings.some(w => w.includes('"linear.team" should be a string')))
+    assert.ok(warnings.some(w => w.includes('unknown key "linear.query"')))
+    assert.ok(validate({ tabs: ['jira'] }).some(w => w.includes('"linear"')), 'the warning lists every tab')
+  })
+  it('merges the linear block over its defaults', () => {
+    const config = merge(DEFAULTS, { linear: { team: 'ENG', filter: { priority: { lte: 2 } } } })
+    assert.equal(config.linear.team, 'ENG')
+    assert.deepEqual(config.linear.filter, { priority: { lte: 2 } })
+    assert.equal(forSource(config, 'linear').branch, '{ref}-{slug}')
+    assert.equal(forSource(config, 'linear').agent_name, '{ref}')
+  })
   it('applies a source block only to its own records', () => {
     const config = merge(DEFAULTS, { branch: 'gh-{number}', shortcut: { label: 'S {ref}' } })
     assert.equal(forSource(config, 'github').branch, 'gh-{number}')
