@@ -50,6 +50,13 @@ describe('parseInline', () => {
       [') mail a@b.com, #notref', ''],
     ])
     assert.deepEqual(parseInline('cc @ana-b').map(s => [s.text, s.style]), [['cc ', ''], ['@ana-b', c.cyan]])
+    assert.deepEqual(parseInline('see sc-12 [SC-7] misc-3').map(s => [s.text, s.style]), [
+      ['see ', ''],
+      ['sc-12', c.green],
+      [' [', ''],
+      ['SC-7', c.green],
+      ['] misc-3', ''],
+    ])
   })
   it('leaves unbalanced markers alone', () => {
     assert.deepEqual(parseInline('**oops and `tick'), [{ text: '**oops and `tick', style: '' }])

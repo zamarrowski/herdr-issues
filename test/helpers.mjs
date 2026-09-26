@@ -48,5 +48,25 @@ export const sampleIssue = (overrides = {}) => ({
   ...overrides,
 })
 
+// A normalised Shortcut story, as lib/shortcut.mjs returns it.
+export const sampleStory = (overrides = {}) => ({
+  source: 'shortcut',
+  number: 482,
+  ref: 'sc-482',
+  title: 'Returns page crashes on empty address',
+  url: 'https://app.shortcut.com/acme/story/482/returns-page-crashes-on-empty-address',
+  closed: false,
+  state: 'OPEN',
+  stateName: 'In Progress',
+  type: 'bug',
+  labels: [{ name: 'returns' }],
+  assignees: [{ login: 'ana' }],
+  author: { login: 'cy' },
+  createdAt: '2026-09-10T09:00:00Z',
+  updatedAt: '2026-09-19T20:00:00Z',
+  workspace: 'acme',
+  ...overrides,
+})
+
 export const commandsOf = calls => calls.map(call => call.slice(0, 2).join(' '))
 export const find = (calls, group, command) => calls.filter(call => call[0] === group && call[1] === command)

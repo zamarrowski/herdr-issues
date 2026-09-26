@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import path from 'node:path'
 import { describe, it } from 'node:test'
-import { DEFAULTS, envOverrides, loadConfig, merge, render, resolveAgent, sanitizeAgentName, sanitizeBranch, saveConfigValue, validate } from '../lib/config.mjs'
+import { DEFAULTS, envOverrides, forSource, loadConfig, merge, render, resolveAgent, sanitizeAgentName, sanitizeBranch, saveConfigValue, validate } from '../lib/config.mjs'
 import { tempDir } from './helpers.mjs'
 
 describe('merge', () => {
@@ -124,5 +124,31 @@ describe('resolveAgent', () => {
     assert.equal(resolveAgent({ config: { agent: 'auto' }, focusedAgent: 'claude' }), 'claude')
     assert.equal(resolveAgent({ config: { agent: 'auto' } }), null)
     assert.equal(resolveAgent(), null)
+  })
+})
+
+describe('tabs and the shortcut block', () => {
+  it('validates tab names and shortcut keys', () => {
+    assert.deepEqual(validate({ tabs: ['github', 'shortcut'], shortcut: { team: 'Backend', branch: 'sc-{number}' } }), [])
+    const warnings = validate({ tabs: ['jira'], shortcut: { token: 'x', nope: 1, team: 3 } })
+    assert.ok(warnings.some(w => w.includes('unknown tab "jira"')))
+    assert.ok(warnings.some(w => w.includes('"shortcut.token" is ignored')))
+    assert.ok(warnings.some(w => w.includes('unknown key "shortcut.nope"')))
+    assert.ok(warnings.some(w => w.includes('"shortcut.team" should be a string')))
+    assert.ok(validate({ tabs: [] }).some(w => w.includes('"tabs" is empty')))
+    assert.ok(validate({ tabs: 'github' }).some(w => w.includes('"tabs" should be a array')))
+  })
+  it('merges the shortcut block over its defaults', () => {
+    const config = merge(DEFAULTS, { shortcut: { team: 'Backend' } })
+    assert.equal(config.shortcut.team, 'Backend')
+    assert.equal(config.shortcut.branch, 'sc-{number}-{slug}')
+  })
+  it('applies a source block only to its own records', () => {
+    const config = merge(DEFAULTS, { branch: 'gh-{number}', shortcut: { label: 'S {ref}' } })
+    assert.equal(forSource(config, 'github').branch, 'gh-{number}')
+    assert.equal(forSource(config, undefined).branch, 'gh-{number}')
+    assert.equal(forSource(config, 'shortcut').branch, 'sc-{number}-{slug}')
+    assert.equal(forSource(config, 'shortcut').label, 'S {ref}')
+    assert.equal(forSource(config, 'shortcut').prompt, '{url}')
   })
 })

@@ -6,7 +6,7 @@ import { DEFAULTS, merge } from '../lib/config.mjs'
 import { stripAnsi } from '../lib/format.mjs'
 import { createLauncher } from '../lib/launch.mjs'
 import { createPicker, createStepper, editLine, layout, stepLines, window } from '../lib/tui.mjs'
-import { sampleIssue, tempDir } from './helpers.mjs'
+import { sampleIssue, sampleStory, tempDir } from './helpers.mjs'
 
 describe('layout / window', () => {
   it('pins the footer and fills the body', () => {
@@ -129,6 +129,52 @@ describe('launcher', () => {
   it('cancels from confirm with Esc', () => {
     let cancelled = false
     const launcher = make({ focusedAgent: 'claude', onCancel: () => (cancelled = true) })
+    launcher.key('\x1b')
+    assert.equal(cancelled, true)
+  })
+  const screenText = out => stripAnsi((Array.isArray(out) ? out : out.lines).join('\n'))
+  it('asks for the repository of a story, preselecting the preferred one', async () => {
+    const repos = {
+      items: [
+        { id: 'api', note: '/code/api', root: '/code/api', workspaceId: 'w3' },
+        { id: 'shop', note: '/code/shop', root: '/code/shop', workspaceId: 'w1' },
+      ],
+      preferred: 1,
+    }
+    let redraws = 0
+    const launcher = make({ issue: sampleStory(), repo: null, focusedAgent: 'codex', loadRepos: async () => repos, onRedraw: () => redraws++ })
+    assert.equal(launcher.state.view, 'repo')
+    assert.match(screenText(launcher.lines(100, 20)), /Looking for the repositories/)
+    await new Promise(resolve => setImmediate(resolve))
+    assert.ok(redraws > 0)
+    const picker = screenText(launcher.lines(100, 20))
+    assert.match(picker, /Which repository should sc-482 be worked on in\?/)
+    assert.match(picker, /› shop/)
+    launcher.key('\x1b[A')
+    launcher.key('\r')
+    assert.equal(launcher.state.view, 'confirm')
+    assert.deepEqual(launcher.state.target, { root: '/code/api', workspaceId: 'w3' })
+    const text = screenText(launcher.lines(100, 20))
+    assert.match(text, /Start story · api/)
+    assert.match(text, /Repository\s+api/)
+    assert.match(text, /Branch\s+sc-482-returns-page-crashes-on-empty-address/)
+    assert.match(text, /r change repository/)
+    launcher.key('r')
+    assert.equal(launcher.state.view, 'repo')
+    launcher.key('\x1b')
+    assert.equal(launcher.state.view, 'confirm', 'Esc keeps the chosen repository')
+  })
+  it('picks the only repository without asking, then asks for the agent', async () => {
+    const launcher = make({ issue: sampleStory(), loadRepos: async () => ({ items: [{ id: 'shop', root: '/code/shop', workspaceId: 'w1' }], preferred: 0 }) })
+    await new Promise(resolve => setImmediate(resolve))
+    assert.equal(launcher.state.view, 'pick')
+    assert.equal(launcher.state.repo, 'shop')
+  })
+  it('says so when herdr has no repository open, and Esc cancels', async () => {
+    let cancelled = false
+    const launcher = make({ issue: sampleStory(), focusedAgent: 'codex', loadRepos: async () => ({ items: [], preferred: -1 }), onCancel: () => (cancelled = true) })
+    await new Promise(resolve => setImmediate(resolve))
+    assert.match(screenText(launcher.lines(100, 20)), /No repository is open in herdr/)
     launcher.key('\x1b')
     assert.equal(cancelled, true)
   })

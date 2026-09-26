@@ -121,6 +121,16 @@ switch (`${group} ${command}`) {
   case 'workspace report-metadata':
     ok({ type: 'ok' })
     break
+  case 'workspace list':
+    ok({
+      type: 'workspace_list',
+      workspaces: [
+        { workspace_id: 'w1', label: 'shop', worktree: { checkout_path: '/code/shop', is_linked_worktree: false, repo_key: '/code/shop/.git', repo_name: 'shop', repo_root: '/code/shop' } },
+        { workspace_id: 'w2', label: 'notes' },
+        { workspace_id: 'w3', label: 'api', worktree: { checkout_path: '/code/api', is_linked_worktree: false, repo_key: '/code/api/.git', repo_name: 'api', repo_root: '/code/api' } },
+      ],
+    })
+    break
   case 'server reload-config':
     ok({ type: 'ok' })
     break

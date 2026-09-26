@@ -19,8 +19,9 @@ export GH_BIN=$tools/fake-gh
 export FAKE_GH_NODE=$(command -v node)
 export FAKE_HERDR_NODE=$FAKE_GH_NODE
 export NO_COLOR=
-unset HERDR_ISSUES_CONFIG HERDR_ISSUES_AGENT
+unset HERDR_ISSUES_CONFIG HERDR_ISSUES_AGENT SHORTCUT_API_TOKEN
 export HERDR_ISSUES_CONFIG=$work/config.json           # defaults only, whatever the local config says
+export HERDR_ISSUES_SECRETS=$work/secrets.json         # never the Shortcut token saved on this machine
 export HERDR_PLUGIN_STATE_DIR=$work/state                # fresh cache
 export HERDR_PLUGIN_CONTEXT_JSON="{\"workspace_id\":\"w3\",\"workspace_label\":\"shop\",\"workspace_cwd\":\"$work/shop\",\"focused_pane_id\":\"w3:p1\",\"focused_pane_cwd\":\"$work/shop\",\"focused_pane_agent\":\"codex\",\"focused_pane_status\":\"idle\"}"
 

@@ -27,6 +27,12 @@ Highest first:
 
 ## Keys
 
+### Tabs
+
+| Key | Type | Default | Description |
+| --- | --- | --- | --- |
+| `tabs` | array | `["all", "github", "shortcut"]` | Tabs of the issues popup, in this order. `"all"` shows GitHub issues and Shortcut stories together, newest updated first. Leave a tab out to hide it, configured or not: `["github"]` is the GitHub-only popup of earlier versions. Unknown names are ignored; an empty list shows every tab. |
+
 ### Agent
 
 | Key | Type | Default | Description |
@@ -43,12 +49,12 @@ Highest first:
 | --- | --- | --- | --- |
 | `branch` | template | `"issue-{number}-{slug}"` | Branch for the new worktree. Characters git refuses in ref names are replaced with `-`. If the branch already exists, its worktree is opened instead of created. |
 | `base` | string | `""` | Base ref for the new branch, passed as `herdr worktree create --base`. Examples: `"main"`, `"origin/main"`. Empty means herdr's default, the source checkout's current HEAD. |
-| `label` | template | `"#{number} {title}"` | Workspace label in the herdr sidebar, cut to `label_max` characters. |
+| `label` | template | `"{ref} {title}"` | Workspace label in the herdr sidebar, cut to `label_max` characters. `{ref}` is `#482` for an issue and `sc-482` for a story. |
 | `label_max` | number | `40` | Maximum length of the label. |
 | `slug_max` | number | `40` | Maximum length of `{slug}`, cut at a word boundary. |
 | `focus` | boolean | `true` | Focus the new workspace when herdr opens it (`--focus` / `--no-focus`). |
 | `trust_repository` | boolean | `false` | Pass `--trust-repository` to herdr's worktree commands. herdr's documentation asks to use it only for repositories you have verified. |
-| `workspace_token` | boolean | `true` | Publish an `issue` metadata token (`#482`) on the new workspace. Show it with `$issue` in `[ui.sidebar.spaces].rows`; see the README. |
+| `workspace_token` | boolean | `true` | Publish an `issue` metadata token (`#482`, `sc-482`) on the new workspace. Show it with `$issue` in `[ui.sidebar.spaces].rows`; see the README. |
 
 ### Prompt and feedback
 
@@ -57,7 +63,7 @@ Highest first:
 | `prompt` | template | `"{url}"` | The text typed into the agent. See below. |
 | `submit` | boolean | `false` | Press Enter after typing the prompt (`herdr agent prompt`). `false` types it with `herdr pane send-text` and leaves it in the agent's input, so you can add context before sending. |
 | `notify` | boolean | `true` | Show a herdr toast (`herdr notification show`) when the agent has the issue. |
-| `limit` | number | `100` | Maximum number of issues listed (`gh issue list --limit`). |
+| `limit` | number | `100` | Maximum number of issues listed (`gh issue list --limit`), and of stories. |
 
 The default prompt is the issue URL and nothing else. Every agent knows what to do with a GitHub
 issue URL, and since it is typed but not sent you can complete the sentence before pressing Enter:
@@ -72,6 +78,44 @@ If the agent you use cannot open URLs (no web tool, or a private repository), te
 
 ```json
 { "prompt": "Work on {url}. Read it with `gh issue view {number} --comments` first.", "submit": true }
+```
+
+### Shortcut
+
+Everything about Shortcut stories lives in the `shortcut` object. The API token does not: the
+Shortcut tab of the popup asks for it and saves it in `secrets.json`, next to `config.json`, with mode
+`0600`. `SHORTCUT_API_TOKEN` takes precedence when it is set. A `token` key here is ignored with a
+warning, so a token never ends up in a file you might share.
+
+| Key | Type | Default | Description |
+| --- | --- | --- | --- |
+| `shortcut.team` | string | `""` | Team name, added to the search as `team:"…"`. Empty lists the stories of the whole workspace. |
+| `shortcut.query` | string | `"!is:done !is:archived"` | [Shortcut search](https://help.shortcut.com/hc/en-us/articles/360000046646-Searching-in-Shortcut-Using-Search-Operators) query for the list. `c` in the popup drops `!is:done` to include done stories. Example: `"owner:ana !is:done !is:archived"`. |
+| `shortcut.branch` | template | `"sc-{number}-{slug}"` | Branch for a story. Shortcut's VCS integration attaches every branch containing `sc-<id>` to the story. |
+| `shortcut.agent_name` | template | `"sc-{number}"` | herdr agent name for a story. |
+| `shortcut.label`, `shortcut.prompt` | template | the global ones | Set them to give stories their own label or prompt. |
+
+The global `branch`, `label`, `agent_name` and `prompt` apply to GitHub issues, and to stories for the
+keys the `shortcut` object does not set.
+
+The owner / requester filter is not configuration: pick it with `f` in the popup, and it is remembered
+in the plugin state directory (`ui.json`). From the command line, pass `--owner NAME|me` and
+`--requester NAME|me` to `issues.mjs --source shortcut`.
+
+Shortcut's search returns stories by relevance, not by date. The plugin takes the first `limit` results
+and sorts them by last update, so in a workspace with more open stories than `limit`, narrow the list
+with `shortcut.team` or `shortcut.query` (`owner:ana`, `iteration:"Sprint 12"`, `type:bug`) rather than
+raising `limit`.
+
+Starting a story asks which repository gets the worktree: the repositories open as herdr workspaces,
+with the one of the pane the popup came from preselected. From the command line, `start.mjs sc-482`
+uses the checkout of `--cwd` (or of the focused pane).
+
+The default prompt is the story URL. An agent can open it only if it has access to Shortcut (for
+example through Shortcut's MCP server). Otherwise say what to do in the prompt:
+
+```json
+{ "shortcut": { "prompt": "Work on Shortcut story {ref}: {title}. Read it with the Shortcut MCP first ({url}).", "label": "{ref} {title}" } }
 ```
 
 ### Timeouts
@@ -95,11 +139,13 @@ placeholders are left as written so typos stay visible.
 | Placeholder | Example |
 | --- | --- |
 | `{number}` | `482` |
+| `{ref}` | `#482`, or `sc-482` for a Shortcut story |
+| `{source}` | `github` or `shortcut` |
 | `{title}` | `Returns page crashes on empty address` |
 | `{slug}` | `returns-page-crashes-on-empty-address` (lowercase ASCII, `slug_max` long) |
-| `{url}` | `https://github.com/acme/shop/issues/482` |
-| `{repo}` | `acme/shop` |
-| `{owner}` | `acme` |
+| `{url}` | `https://github.com/acme/shop/issues/482`, or the story URL |
+| `{repo}` | `acme/shop`; for a story, the name of the repository you picked (`shop`) |
+| `{owner}` | `acme` (empty for a story) |
 | `{name}` | `shop` |
 | `{branch}` | the rendered `branch` (available in `label`, `agent_name` and `prompt`) |
 | `{label}` | the rendered `label` (available in `agent_name` and `prompt`) |
@@ -117,10 +163,13 @@ Handy for keybinding variants: bind a second key to an action whose command adds
 | `HERDR_ISSUES_BASE` | Overrides `base`. |
 | `HERDR_ISSUES_CWD` | Checkout to work on (instead of the focused pane's directory). |
 | `HERDR_ISSUES_REPO` | `owner/name` whose issues to read, when `gh` should not infer it from the checkout. |
-| `HERDR_ISSUES_URL` | Issue URL or number for the start popup; the `start` action fills it from `HERDR_PLUGIN_CLICKED_URL` on Ctrl+click. |
+| `HERDR_ISSUES_URL` | Issue URL or number, `sc-<id>` or story URL for the start popup; the `start` action fills it from `HERDR_PLUGIN_CLICKED_URL` on Ctrl+click. |
 | `HERDR_ISSUES_CONFIG` | Path of `config.json` (default: `$HERDR_PLUGIN_CONFIG_DIR/config.json`). |
 | `HERDR_ISSUES_NODE` | Node.js binary for `bin/run.sh` when it is not in PATH or the usual places. |
 | `GH_BIN` | Path of the `gh` binary. |
+| `SHORTCUT_API_TOKEN` | Shortcut API token. Takes precedence over the one saved from the Shortcut tab, and is never written anywhere. |
+| `HERDR_ISSUES_SECRETS` | Path of `secrets.json` (default: `$HERDR_PLUGIN_CONFIG_DIR/secrets.json`). |
+| `HERDR_ISSUES_SHORTCUT_API` | Base URL of the Shortcut API (default `https://api.app.shortcut.com/api/v3`); the tests point it at a local server. |
 | `NO_COLOR` | Disables colours in the popups. |
 
 For example, a binding that always starts issues with Codex, whatever is in your pane:
@@ -163,6 +212,15 @@ worktree timeout for a big repo:
   "prompt": "Issue #{number}: {title} ({url}). Read it with `gh issue view {number} --comments`, write a short plan, wait for my OK, then implement it on branch {branch}.",
   "submit": true,
   "timeouts": { "worktree_ms": 600000 }
+}
+```
+
+Shortcut only, one team's stories, on `feature/` branches:
+
+```json
+{
+  "tabs": ["shortcut"],
+  "shortcut": { "team": "Backend", "branch": "feature/sc-{number}-{slug}" }
 }
 ```
 

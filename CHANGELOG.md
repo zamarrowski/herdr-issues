@@ -6,6 +6,27 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Shortcut stories next to GitHub issues. The popup has three tabs, All, GitHub and Shortcut, and
+  `tabs` in `config.json` chooses which ones appear and in what order. The Shortcut tab asks for an API
+  token the first time, checks it and saves it in `secrets.json` (mode `0600`); `,` replaces or removes
+  it, and `SHORTCUT_API_TOKEN` takes precedence. Stories show their workflow state, tasks and comments,
+  start on an `sc-<id>-<slug>` branch after asking which open repository gets the worktree, and can be
+  Ctrl+clicked (`app.shortcut.com/…/story/…`) or started with `start.mjs sc-482`. New `shortcut` config
+  block (`team`, `query`, per-story templates), `{ref}` and `{source}` placeholders, `--source` for
+  `issues.mjs`, and a Shortcut check in the setup popup.
+- Owner / requester filter for Shortcut stories (`f`): anyone, me or any member of the workspace,
+  applied in the Shortcut search and remembered between popups; `--owner` / `--requester` on the
+  command line.
+
+### Changed
+
+- The default `label` is `{ref} {title}`, which renders exactly as before for GitHub issues.
+- The setup popup checks `gh` only when a GitHub tab is shown. The keybinding descriptions say
+  "issues and stories".
+- The issue cache moved to a new format; old cache files are ignored.
+
 ## [0.1.0] - 2026-09-19
 
 First public release.
