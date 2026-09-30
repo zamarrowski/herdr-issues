@@ -52,6 +52,50 @@ after `--`, exactly as `herdr agent start … -- <args>` would:
 
 The plugin does not validate them. Check your agent's `--help`.
 
+The settings screen (`,` in the popup) edits them without opening the file: `e` on an agent types its
+extra arguments, quoted like in a shell (`--add-dir '../my dir'`).
+
+## Modes
+
+A mode is a named set of arguments for one agent kind, such as Claude Code's *plan* or *skip
+permissions*. The settings screen offers the modes of each agent; picking one writes its arguments in
+`agent_args`, replacing the other modes of that agent and keeping the extra arguments. A mode is
+recognised in `agent_args` whenever its arguments appear there in a row, so hand-written arguments show
+up as the matching mode too.
+
+The defaults, in `agent_modes`:
+
+```json
+{
+  "agent_modes": {
+    "claude": {
+      "accept edits": ["--permission-mode", "acceptEdits"],
+      "auto": ["--permission-mode", "auto"],
+      "plan": ["--permission-mode", "plan"],
+      "skip permissions (dangerous)": ["--dangerously-skip-permissions"]
+    },
+    "codex": {
+      "read only": ["--sandbox", "read-only"],
+      "workspace write": ["--sandbox", "workspace-write"],
+      "no sandbox, no approvals (dangerous)": ["--dangerously-bypass-approvals-and-sandbox"]
+    },
+    "gemini": {
+      "auto edit": ["--approval-mode", "auto_edit"],
+      "yolo (dangerous)": ["--yolo"]
+    }
+  }
+}
+```
+
+Modes you add in `config.json` are merged with these, per agent; `[]` hides a default one. Nothing in the
+plugin knows what a mode does: it is data, like `agent_args`, so a mode for any other agent works the
+same way. Put "dangerous" in the name of a mode that turns off the agent's safety prompts or sandbox:
+the settings and the confirmation screen show it in red.
+
+A mode that skips permissions lets the agent run any command without asking. The worktree keeps its
+changes off your checkout's branch, but it is not a sandbox: the agent can still reach anything your
+user can.
+
 ## Startup dialogs
 
 `herdr agent start` returns once herdr has detected the agent and considers it ready for input. Some

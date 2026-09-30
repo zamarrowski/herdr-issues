@@ -31,8 +31,8 @@ in the config and let the plugin send it.
 ## What it does
 
 - **Browse.** Open issues newest first, with labels, assignees and age, in four tabs: **All**,
-  **GitHub** (the repository of your pane), **Shortcut** and **Linear** (your workspaces). `tabs` in the config
-  decides which ones you see. `/` filters as you type, `c`
+  **GitHub** (the repository of your pane), **Shortcut** and **Linear** (your workspaces). The settings
+  screen (`,`) decides which ones you see. `/` filters as you type, `c`
   includes closed issues, `Enter` shows the description and the comments rendered as Markdown
   (headings, lists, task lists, syntax-highlighted code blocks, quotes, links, `#123` and
   `@mentions`), `o` opens the issue in the browser. The last list is cached per repository so the popup paints instantly and
@@ -41,8 +41,12 @@ in the config and let the plugin send it.
   issue URL typed into its input, ready for your Enter. A confirmation screen shows exactly what is about
   to happen: agent, branch, workspace label, prompt.
 - **Any agent.** By default the plugin uses the agent already running in the pane you opened the popup
-  from. Otherwise it asks, with the list herdr supports. Set a default once, or pass extra arguments
-  per agent kind (`--full-auto`, `--add-dir …`).
+  from. Otherwise it asks, with the list herdr supports. Set a default once, and choose how each agent
+  starts: Claude Code in plan mode or skipping permissions, Codex without its sandbox, any extra
+  arguments (`--add-dir …`).
+- **Settings.** `,` in the popup (or `s` in the setup popup) shows or hides and reorders the tabs, sets
+  the default agent and how each agent starts, and manages the Shortcut and Linear accounts. Changes
+  are saved in `config.json` and apply at once.
 - **Shortcut stories.** The Shortcut tab asks for an API token the first time and remembers it. Stories
   show their workflow state, tasks and comments, and start on an `sc-482-…` branch, which Shortcut links
   to the story. A story belongs to no repository, so the plugin asks where to work: any workspace open
@@ -128,8 +132,9 @@ repository is inferred from the focused pane's directory (through `gh`, so forks
 keep working.
 
 The popup has four tabs, **All**, **GitHub**, **Shortcut** and **Linear**, and opens on the last one
-you used. Hide the ones you do not want with `tabs` in `config.json`, for example `"tabs": ["github"]`
-for GitHub only, or `"tabs": ["linear", "github"]` to have Linear first and no All or Shortcut tab.
+you used. Hide the ones you do not want, or change their order, in the settings (`,`): the choice is
+saved as `tabs` in `config.json`, for example `"tabs": ["github"]` for GitHub only, or
+`"tabs": ["linear", "github"]` to have Linear first and no All or Shortcut tab.
 
 ### Browsing
 
@@ -144,7 +149,7 @@ for GitHub only, or `"tabs": ["linear", "github"]` to have Linear first and no A
 | `c` | include closed issues |
 | `r` | refresh |
 | `f` | people filter, remembered between popups: Shortcut owner / requester, Linear assignee / creator (their tabs, and both on All) |
-| `,` | Shortcut or Linear settings (on its tab): replace or remove the token |
+| `,` | settings: tabs, default agent, how each agent starts, Shortcut and Linear accounts (see [Settings](#settings)) |
 | `q` / `Esc` | quit |
 
 Reading an issue renders its Markdown, code blocks included:
@@ -167,7 +172,8 @@ nothing is lost to `limit`, and it is remembered: the next popup opens with the 
 follows the token, whoever it belongs to). The header shows the active filter, and `x` on the filter
 screen clears it.
 
-`,` opens the Shortcut settings, where `e` replaces the token and `x` removes it.
+`,` opens the settings; the Shortcut row under *Accounts* leads to the account, where `e` replaces the
+token and `x` removes it.
 
 If you already manage the token elsewhere, export `SHORTCUT_API_TOKEN` instead: it takes precedence
 and the popup never asks. To list one team's stories only, or to change the search, set
@@ -195,8 +201,8 @@ tab lists the issues of the workspace that are not completed or canceled, newest
 their state; `c` adds the completed and canceled ones.
 
 `f` filters by **assignee** and **creator** (*anyone*, *me* or any member), inside the Linear query, and
-is remembered like the Shortcut filter. `,` opens the Linear settings (`e` replaces the key, `x`
-removes it). `LINEAR_API_KEY`, when set, takes precedence and the popup never asks. To list one team's
+is remembered like the Shortcut filter. The Linear row of the settings (`,`) leads to the account (`e`
+replaces the key, `x` removes it). `LINEAR_API_KEY`, when set, takes precedence and the popup never asks. To list one team's
 issues only, set `linear.team` to its key (`ENG`); `linear.filter` adds conditions of your own, such as
 a project or a priority (see [docs/configuration.md](docs/configuration.md#linear)).
 
@@ -267,7 +273,35 @@ this order:
 4. Otherwise the popup asks (the command line refuses and tells you the options).
 
 The default `"agent": "auto"` means "the agent I am already using". Press `d` on the confirmation
-screen to make the chosen agent the default. Per-agent extra arguments go in `agent_args`:
+screen to make the chosen agent the default, or pick it in the settings (`,`).
+
+### Settings
+
+`,` opens the settings from any tab of the popup (on a Shortcut or Linear tab that asks for a token,
+with the field empty), and `s` opens them in the setup popup. Every change is written to `config.json`
+at once and applies in the open popup.
+
+| Section | What you change | Keys |
+| --- | --- | --- |
+| Tabs | which tabs show, and their order (`tabs`) | `Enter` / `space` show or hide, `J` / `K` move |
+| Agent | the default agent, or `auto` (`agent`) | `Enter` picks |
+| How each agent starts | a mode and extra arguments per agent kind (`agent_args`) | `Enter` picks the mode, `e` types the extra arguments, `x` clears them |
+| Accounts | the Shortcut and Linear accounts: replace or remove the token | `Enter` opens |
+
+A **mode** is a named set of arguments. The plugin ships these, in `agent_modes`:
+
+| Agent | Modes |
+| --- | --- |
+| `claude` | *accept edits*, *auto*, *plan* (`--permission-mode …`), *skip permissions (dangerous)* (`--dangerously-skip-permissions`) |
+| `codex` | *read only*, *workspace write* (`--sandbox …`), *no sandbox, no approvals (dangerous)* (`--dangerously-bypass-approvals-and-sandbox`) |
+| `gemini` | *auto edit* (`--approval-mode auto_edit`), *yolo (dangerous)* (`--yolo`) |
+
+Picking one replaces the other modes of that agent in its `agent_args` and keeps your extra arguments;
+*default* removes it. The confirmation screen shows the arguments and the mode before anything starts,
+in red when the mode is dangerous. Any other agent (`+ another agent…`) takes extra arguments, and
+`agent_modes` in `config.json` adds modes of your own ([docs/agents.md](docs/agents.md#modes)).
+
+The settings write `agent_args`, which you can also edit by hand:
 
 ```json
 {
@@ -285,14 +319,15 @@ screen to make the chosen agent the default. Per-agent extra arguments go in `ag
 
 Optional. `config.json` lives in the plugin config directory, which
 `herdr plugin config-dir zamarrowski.issues` prints (`~/.config/herdr/plugins/config/zamarrowski.issues/config.json`
-on macOS and Linux). Create it from [`config.example.json`](config.example.json) with the setup popup
-(`c`) or by hand. Every key is optional; these are the defaults:
+on macOS and Linux). The settings screen (`,`) writes the common keys for you; for the rest, create it
+from [`config.example.json`](config.example.json) with the setup popup (`c`) or by hand. Every key is optional; these are the defaults:
 
 | Key | Default | What it does |
 | --- | --- | --- |
 | `tabs` | `["all", "github", "shortcut", "linear"]` | tabs of the popup, in this order |
 | `agent` | `"auto"` | agent kind, or `auto` for the one in your pane |
 | `agent_args` | `{}` | extra argv per agent kind, passed after `--` |
+| `agent_modes` | see [Settings](#settings) | named argument sets per agent kind, offered by the settings |
 | `agent_name` | `"issue-{number}"` | herdr agent name, so `herdr agent prompt issue-482 "…"` works later |
 | `branch` | `"issue-{number}-{slug}"` | branch of the new worktree |
 | `base` | `""` | base ref for the branch, e.g. `"origin/main"` (empty: herdr's default, the current HEAD) |

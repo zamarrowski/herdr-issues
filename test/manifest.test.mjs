@@ -129,5 +129,6 @@ describe('package.json', () => {
     assert.deepEqual(example.shortcut, { ...DEFAULTS.shortcut })
     assert.deepEqual(example.linear, { ...DEFAULTS.linear })
     assert.deepEqual(example.tabs, [...DEFAULTS.tabs])
+    assert.deepEqual(example.agent_modes, JSON.parse(JSON.stringify(DEFAULTS.agent_modes)))
   })
 })

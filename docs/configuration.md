@@ -14,7 +14,9 @@ what you leave out keeps its default. Keys starting with `$` (such as `$comment`
 annotate the file. Unknown keys and wrong types are reported by the setup popup and shown once in the
 issues popup; they never stop the plugin.
 
-Changes apply the next time a popup opens.
+Changes apply the next time a popup opens. The settings screen (`,` in the issues popup, `s` in the
+setup popup) edits `tabs`, `agent` and `agent_args` for you, writes them to `config.json` straight away
+and applies them in the open popup; the rest of the file is left as it is.
 
 ## Precedence
 
@@ -31,14 +33,15 @@ Highest first:
 
 | Key | Type | Default | Description |
 | --- | --- | --- | --- |
-| `tabs` | array | `["all", "github", "shortcut", "linear"]` | Tabs of the issues popup, in this order. `"all"` shows GitHub issues, Shortcut stories and Linear issues together, newest updated first. Leave a tab out to hide it, configured or not: `["github"]` is the GitHub-only popup of earlier versions. Unknown names are ignored; an empty list shows every tab. |
+| `tabs` | array | `["all", "github", "shortcut", "linear"]` | Tabs of the issues popup, in this order; the settings screen shows, hides and moves them. `"all"` shows GitHub issues, Shortcut stories and Linear issues together, newest updated first. Leave a tab out to hide it, configured or not: `["github"]` is the GitHub-only popup of earlier versions. Unknown names are ignored; an empty list shows every tab. |
 
 ### Agent
 
 | Key | Type | Default | Description |
 | --- | --- | --- | --- |
 | `agent` | string | `"auto"` | herdr agent kind to start: `claude`, `codex`, `gemini`, `pi`, `opencode`, … (`herdr agent` prints the list your herdr supports). `"auto"` uses the agent running in the pane the popup was opened from, and asks when there is none. |
-| `agent_args` | object | `{}` | Extra command-line arguments per agent kind, passed to the agent after `--`. Example: `{ "codex": ["--full-auto"], "claude": ["--add-dir", "../shared"] }`. Check each agent's `--help`; the plugin passes them through untouched. |
+| `agent_args` | object | `{}` | Extra command-line arguments per agent kind, passed to the agent after `--`. Example: `{ "codex": ["--full-auto"], "claude": ["--add-dir", "../shared"] }`. Check each agent's `--help`; the plugin passes them through untouched. The settings screen writes it: a mode, then the extra arguments. |
+| `agent_modes` | object | Claude Code, Codex and Gemini CLI modes | Named argument sets per agent kind, offered by the settings screen as the ways that agent can start: `{ "claude": { "plan": ["--permission-mode", "plan"] } }`. Picking one puts its arguments in `agent_args` in place of the other modes of that kind. Yours are merged with the defaults; `[]` hides a default one. A name containing "dangerous" is shown in red. See [agents.md](agents.md#modes). |
 | `agent_name` | template | `"issue-{number}"` | Name herdr gives the agent. It must match `[a-z][a-z0-9_-]{0,31}`; the plugin lowercases and trims it, and appends a short suffix when the name is already taken by a live agent. Address it later with `herdr agent prompt issue-482 "…"`. |
 | `auto_accept_trust_prompt` | boolean | `true` | When the agent starts blocked and its pane shows text matching `trust_prompt_pattern`, press Enter for it and wait again. Set to `false` to always answer startup dialogs yourself. |
 | `trust_prompt_pattern` | regex | `"trust the files\|trust this (folder\|directory\|workspace\|repository)\|do you trust\|yes, proceed"` | Case-insensitive JavaScript regular expression tested against the agent's visible screen. Extend it when your agent asks something the default does not cover. |
@@ -265,6 +268,16 @@ GitHub and Linear, one team's high-priority issues, on the branch Linear suggest
 {
   "tabs": ["all", "github", "linear"],
   "linear": { "team": "ENG", "filter": { "priority": { "lte": 2 } }, "branch": "{vcs_branch}" }
+}
+```
+
+Claude Code without permission prompts, and a Codex mode of your own (the settings screen writes the
+`agent_args` part when you pick the mode):
+
+```json
+{
+  "agent_args": { "claude": ["--dangerously-skip-permissions"] },
+  "agent_modes": { "codex": { "on request": ["--ask-for-approval", "on-request"] } }
 }
 ```
 

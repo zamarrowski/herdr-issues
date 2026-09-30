@@ -64,6 +64,7 @@ lib/cache.mjs         last list per source and project, and the last tab
 lib/herdr.mjs         herdr CLI wrapper: worktree, agent, notification, metadata
 lib/start.mjs         the start flow (worktree → agent → prompt), agent-agnostic
 lib/launch.mjs        confirm / pick agent / progress screens shared by both popups
+lib/settings.mjs      the settings screen (tabs, default agent, agent modes and arguments), shared by the issues and setup popups
 lib/tui.mjs           screen loop, picker, stepper, key helpers
 lib/setup.mjs         keybinding block, starter config, environment checks
 lib/markdown.mjs      Markdown subset → styled terminal lines (issue bodies and comments)
@@ -85,7 +86,7 @@ Design rules worth knowing:
   (`lib/herdr.mjs`). No socket protocol, no private files. This keeps the plugin working across herdr
   versions and lets the tests script herdr's answers.
 - **Agent-agnostic.** Nothing may special-case an agent kind outside `config.json` data
-  (`agent_args`, `trust_prompt_pattern`). If an agent needs a workaround, make it a configurable
+  (`agent_args`, `agent_modes`, `trust_prompt_pattern`). If an agent needs a workaround, make it a configurable
   behaviour that any agent can use.
 - **One dependency, optional at runtime.** highlight.js is fetched by the manifest's `[[build]]` step
   and loaded lazily; when it is missing the plugin must keep working (code blocks turn plain). Anything
@@ -138,7 +139,7 @@ popups, the start flow and the setup checks only see it through its adapter. Add
 1. `lib/jira.mjs`: the API client on top of `lib/integration.mjs` (`tokenFrom`, `fetchJson`, `ApiError`,
    `peopleFilter`, `checklist`), records normalised to the shape in `lib/sources.mjs`, and
    `export const remote = { … }`, the adapter described at the top of `lib/remotes.mjs`.
-2. `lib/remotes.mjs`: add it to the list. That gives it a tab, the token form, the settings screen, the
+2. `lib/remotes.mjs`: add it to the list. That gives it a tab, the token form, the account screen, the
    people filter, reference parsing for the start popup, `--source jira` and the setup check.
 3. `lib/config.mjs`: its tab in `DEFAULTS.tabs`, its block in `DEFAULTS` (`team`, `branch`, `agent_name`…)
    and in `SOURCE_BLOCKS` for validation; the same block in `config.example.json`.

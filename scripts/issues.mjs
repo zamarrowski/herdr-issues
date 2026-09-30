@@ -2,7 +2,8 @@
 // in tabs (All · GitHub · Shortcut · Linear, as configured in `tabs`).
 //   Tab/1-4 switch tabs · Enter read · s start · o open in browser · r refresh · c show closed · / filter · j/k move · q quit
 //   On the Shortcut and Linear tabs: the token form when no token is set, `f` for the people filter
-//   (owner / requester, assignee / creator; remembered), `,` for the settings (edit or remove the token).
+//   (owner / requester, assignee / creator; remembered).
+//   `,` on any tab: the settings (tabs, default agent, how each agent starts, the Shortcut and Linear accounts).
 // The repository comes from HERDR_PLUGIN_CONTEXT_JSON (focused pane cwd), or --cwd PATH / --repo owner/name.
 // Without a TTY it prints the list (JSON with --json) and exits, which is handy for scripts and agents.
 import { parseArgs } from '../lib/args.mjs'
@@ -15,6 +16,7 @@ import { FALLBACK_KINDS, agentKinds } from '../lib/herdr.mjs'
 import { createLauncher } from '../lib/launch.mjs'
 import { renderMarkdown } from '../lib/markdown.mjs'
 import { secretsPath } from '../lib/paths.mjs'
+import { createSettings } from '../lib/settings.mjs'
 import { openUrl } from '../lib/proc.mjs'
 import { notSetUp } from '../lib/integration.mjs'
 import { ME, REMOTES } from '../lib/remotes.mjs'
@@ -38,16 +40,17 @@ const target = {
   url: null,
   resolved: false,
 }
-const tabs = visibleTabs(config.tabs)
-const needed = sourcesOf(tabs)
+// The settings screen changes `tabs` while the popup is open (applyTabs).
+let tabs = visibleTabs(config.tabs)
+let needed = sourcesOf(tabs)
 // Shortcut and Linear, when a tab shows them: each has its token, its account and its people filter.
-const remoteIds = REMOTE_SOURCES.filter(id => needed.includes(id))
+let remoteIds = REMOTE_SOURCES.filter(id => needed.includes(id))
 const remembered = readUiState()
 
 const state = {
   tab: tabs.includes(remembered.tab) ? remembered.tab : tabs[0],
   cursor: 0,
-  view: 'list', // list | detail | settings | filter | launch
+  view: 'list', // list | detail | settings | account | filter | launch
   showClosed: false,
   filter: '',
   filtering: false,
@@ -59,6 +62,8 @@ const state = {
   kinds: [...FALLBACK_KINDS],
   launcher: null,
   launchFrom: 'list',
+  settings: null, // the settings screen (lib/settings.mjs) while it is open
+  account: null, // the Shortcut or Linear account screen, opened from the settings
   confirmRemove: false,
   filterRow: 0, // row of the people filter screen
   peoplePicker: null,
@@ -299,9 +304,9 @@ const removeToken = id => {
   clearCaches(`${id}:`)
   Object.assign(sources[id], { auth: remote.auth(), me: null, workspace: null, lookups: null, items: [], fetchedAt: null, error: null })
   state.confirmRemove = false
-  state.view = 'list'
+  state.view = 'settings'
   state.cursor = 0
-  state.message = `${remote.name} ${remote.tokenName} removed`
+  state.settings.state.message = `${remote.name} ${remote.tokenName} removed`
 }
 
 // ── people filter (Shortcut owner / requester, Linear assignee / creator) ──
@@ -356,14 +361,45 @@ const openPeoplePicker = () => {
   if (current >= 0) state.peoplePicker.state.cursor = current
 }
 
-const openSettings = () => {
-  const id = state.tab
+// ── settings ────────────────────────────────────────────────────────────────
+
+// After the settings screen saved `tabs`: the new tabs, and the sources they need that are not loaded yet.
+const applyTabs = () => {
+  tabs = visibleTabs(config.tabs)
+  needed = sourcesOf(tabs)
+  remoteIds = REMOTE_SOURCES.filter(id => needed.includes(id))
+  if (!tabs.includes(state.tab)) {
+    state.tab = tabs[0]
+    state.cursor = 0
+  }
+  if (needed.includes('github') && !sources.github.fetchedAt) loadGithub()
+  for (const id of remoteIds) if (!sources[id].fetchedAt) loadRemote(id)
+}
+
+const accountText = id => {
+  const { auth, me } = sources[id]
+  if (!auth) return paint(c.dim, 'not connected')
+
+  return me ? `@${me.handle} in ${me.workspace}` : `connected (${REMOTES[id].tokenWord} from ${auth.from === 'env' ? REMOTES[id].tokenEnv : 'secrets.json'})`
+}
+
+// The account screen of a connected source, or its token form (on its tab) when it has no token yet.
+const openAccount = id => {
+  const remote = REMOTES[id]
   const source = sources[id]
-  state.view = 'settings'
+  if (!source.auth) {
+    if (!tabs.includes(id)) return `Show the ${remote.name} tab first, then connect it there`
+    state.view = 'list'
+    switchTab(id)
+
+    return
+  }
+  state.view = 'account'
+  state.account = id
   state.confirmRemove = false
   state.message = ''
-  if (source.auth && !source.me) {
-    REMOTES[id]
+  if (!source.me) {
+    remote
       .whoami(source.auth.token)
       .then(me => {
         source.me = me
@@ -373,6 +409,27 @@ const openSettings = () => {
       })
       .finally(draw)
   }
+}
+
+const openSettings = () => {
+  state.view = 'settings'
+  state.message = ''
+  state.settings = createSettings({
+    config,
+    configFile,
+    kinds: state.kinds,
+    focusedAgent: target.focusedAgent,
+    links: REMOTE_SOURCES.map(id => ({ name: REMOTES[id].name, text: () => accountText(id), open: () => openAccount(id) })),
+    focus: REMOTES[state.tab]?.name ?? null,
+    onChange: key => {
+      if (key === 'tabs') applyTabs()
+    },
+    onClose: quit => {
+      if (quit) return screen.exit(0)
+      state.view = 'list'
+      state.settings = null
+    },
+  })
 }
 
 // ── rendering ───────────────────────────────────────────────────────────────
@@ -488,7 +545,7 @@ const filterHint = tab => {
     const [id] = ids
     const fields = REMOTES[id].filter.names.join('/')
 
-    return hint(`${REMOTES[id].name}: f ${fields}${people(id) ? ` (${people(id)})` : ''}${tab === id ? ' · , settings' : ''}`)
+    return hint(`${REMOTES[id].name}: f ${fields}${people(id) ? ` (${people(id)})` : ''}`)
   }
 
   return hint(`f people filter: ${ids.map(id => `${REMOTES[id].name}${people(id) ? ` (${people(id)})` : ''}`).join(' · ')}`)
@@ -504,7 +561,8 @@ const listFrame = (width, height) => {
     const form = tokenFormLines(tab, width)
     cursor = { row: body.length + form.cursorRow, col: form.cursorCol }
     body.push(...form.lines)
-    footer.push(notice(state.message), hint(`Enter save${sources[tab].form.editing ? ' · Esc cancel' : ''} · Tab switch tab · Ctrl+U clear · Ctrl+C quit`))
+    const { editing, input } = sources[tab].form
+    footer.push(notice(state.message), hint(`Enter save${editing ? ' · Esc cancel' : ''} · Tab switch tab · Ctrl+U clear${input ? '' : ' · , settings'} · Ctrl+C quit`))
 
     return { lines: layout(body, footer, height), cursor }
   }
@@ -514,7 +572,7 @@ const listFrame = (width, height) => {
     footer.push(input.text)
     cursor = { row: height - 1, col: input.cursorCol }
   } else footer.push(notice(state.message || (state.filter ? `filter: ${state.filter} (Esc clears)` : '')))
-  footer.push(hint(`Tab switch · Enter read · s start · o browser · r refresh · c ${state.showClosed ? 'hide' : 'show'} closed · / filter · q quit`))
+  footer.push(hint(`Tab switch · Enter read · s start · o browser · r refresh · c ${state.showClosed ? 'hide' : 'show'} closed · / filter · , settings · q quit`))
   if (filterRemotes().length) footer.push(filterHint(tab))
 
   const issues = visibleIssues()
@@ -585,9 +643,9 @@ const detailFrame = (width, height) => {
   return layout(body, footer, height)
 }
 
-const settingsFrame = (width, height) => {
-  const remote = REMOTES[state.tab]
-  const { auth, me, workspace } = sources[state.tab]
+const accountFrame = (width, height) => {
+  const remote = REMOTES[state.account]
+  const { auth, me, workspace } = sources[state.account]
   const row = (name, value) => ` ${paint(c.dim, name.padEnd(12))} ${value}`
   const body = [header(remote.name, { subtitle: workspace ?? '' }, width), rule(width), '']
   body.push(row('Account', me ? `@${me.handle}${me.name ? ` (${me.name})` : ''} in ${me.workspace}` : paint(c.dim, 'checking…')))
@@ -632,7 +690,8 @@ const render = (width, height) => {
   if (state.view === 'launch') return state.launcher.lines(width, height)
   if (state.view === 'filter') return filterFrame(width, height)
   if (state.view === 'detail') return detailFrame(width, height)
-  if (state.view === 'settings') return settingsFrame(width, height)
+  if (state.view === 'settings') return state.settings.lines(width, height)
+  if (state.view === 'account') return accountFrame(width, height)
 
   return listFrame(width, height)
 }
@@ -658,6 +717,7 @@ const onTokenKey = key => {
     return
   }
   if (isEnter(key)) return submitToken(state.tab)
+  if (key === ',' && !form.input) return openSettings() // no token starts with a comma
   form.input = editLine(form.input, key)
   form.error = null
 }
@@ -695,7 +755,7 @@ const onListKey = key => {
   else if (key === 's' || key === 'S') return askStart()
   else if (key === 'o' || key === 'O') return openBrowser()
   else if (key === 'r' || key === 'R') return load({ force: true })
-  else if (key === ',' && REMOTES[state.tab]) return openSettings()
+  else if (key === ',') return openSettings()
   else if ((key === 'f' || key === 'F') && filterRemotes().length) return openFilter()
   else if (key === '/') {
     state.filtering = true
@@ -729,12 +789,12 @@ const onDetailKey = key => {
   else if (key === 'o' || key === 'O') return openBrowser()
 }
 
-const onSettingsKey = key => {
+const onAccountKey = key => {
   if (isCtrlC(key)) return screen.exit(0)
   if (state.confirmRemove) {
     if (key === 'y' || key === 'Y') {
       try {
-        removeToken(state.tab)
+        removeToken(state.account)
       } catch (error) {
         state.confirmRemove = false
         state.message = `could not remove the token: ${error.message}`
@@ -745,18 +805,26 @@ const onSettingsKey = key => {
   }
   if (key === 'q' || key === 'Q') return screen.exit(0)
   if (isEsc(key) || key === 'h' || key === '\x7f') {
-    state.view = 'list'
+    state.view = 'settings'
     state.message = ''
 
     return
   }
-  const source = sources[state.tab]
+  const id = state.account
+  const source = sources[id]
   if (source.auth?.from === 'env') return
   if (key === 'e' || key === 'E') {
+    // The token form lives on the source's tab.
+    if (!tabs.includes(id)) {
+      state.message = `Show the ${REMOTES[id].name} tab to replace the ${REMOTES[id].tokenName} there`
+
+      return
+    }
     source.form.editing = true
     source.form.input = ''
     source.form.error = null
     state.view = 'list'
+    switchTab(id)
   } else if (key === 'x' || key === 'X') state.confirmRemove = true
 }
 
@@ -792,7 +860,8 @@ const onKey = key => {
   if (state.view === 'launch') return state.launcher.key(key)
   if (state.view === 'filter') return onFilterScreenKey(key)
   if (state.view === 'detail') return onDetailKey(key)
-  if (state.view === 'settings') return onSettingsKey(key)
+  if (state.view === 'settings') return state.settings.key(key)
+  if (state.view === 'account') return onAccountKey(key)
 
   return onListKey(key)
 }

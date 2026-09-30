@@ -1,12 +1,16 @@
 // Setup: environment checks, keybindings for config.toml and a starter config.json.
 //
 //   • popup (TTY, via the `setup` action): shows the checks and the snippet;
-//     k adds the keybindings (backup + reload), u removes them, c creates config.json, q quits.
+//     k adds the keybindings (backup + reload), u removes them, c creates config.json, s opens the settings
+//     (tabs, default agent, how each agent starts), q quits.
 //   • CLI (no TTY): setup.mjs [--print] [--write-keys] [--remove-keys] [--init-config] [--check]
 import { parseArgs } from '../lib/args.mjs'
+import { loadConfig } from '../lib/config.mjs'
+import { readContext } from '../lib/context.mjs'
 import { c, paint, truncate } from '../lib/format.mjs'
-import { reloadConfig } from '../lib/herdr.mjs'
+import { FALLBACK_KINDS, agentKinds, reloadConfig } from '../lib/herdr.mjs'
 import { PLUGIN_ID, REPO_URL, configPath, herdrConfigPath, pluginVersion } from '../lib/paths.mjs'
+import { createSettings } from '../lib/settings.mjs'
 import { initConfig, keyBlock, removeKeys, runChecks, writeKeys } from '../lib/setup.mjs'
 import { createScreen, header, hint, isCtrlC, isEsc, layout, notice, rule } from '../lib/tui.mjs'
 
@@ -72,7 +76,7 @@ if (!process.stdin.isTTY || !process.stdout.isTTY) {
 
 // ── popup ───────────────────────────────────────────────────────────────────
 
-const state = { checks: [], message: 'checking…', busy: false }
+const state = { checks: [], message: 'checking…', busy: false, settings: null, kinds: [...FALLBACK_KINDS] }
 
 const refresh = async () => {
   state.checks = await runChecks()
@@ -80,7 +84,24 @@ const refresh = async () => {
   screen.draw()
 }
 
+const openSettings = () => {
+  const { config, file } = loadConfig()
+  state.settings = createSettings({
+    config,
+    configFile: file,
+    kinds: state.kinds,
+    focusedAgent: readContext().focused_pane_agent || null,
+    onClose: quit => {
+      if (quit) return screen.exit(0)
+      state.settings = null
+      state.message = ''
+      refresh() // the tabs decide which checks run
+    },
+  })
+}
+
 const render = (width, height) => {
+  if (state.settings) return state.settings.lines(width, height)
   const body = [
     header('Issues setup', { subtitle: PLUGIN_ID, right: `v${pluginVersion()}` }, width),
     rule(width),
@@ -93,7 +114,7 @@ const render = (width, height) => {
     paint(c.dim, ' Ctrl+click a GitHub issue, Shortcut story or Linear issue URL in any pane to start it; no keybinding needed.'),
     paint(c.dim, ` Docs: ${REPO_URL}`),
   ]
-  const footer = [notice(state.message), hint('k add keybindings to config.toml · u remove them · c create config.json · q quit')]
+  const footer = [notice(state.message), hint('k add keybindings to config.toml · u remove them · c create config.json · s settings · q quit')]
 
   return layout(body, footer, height)
 }
@@ -113,6 +134,8 @@ const act = async fn => {
 }
 
 const onKey = key => {
+  if (state.settings) return state.settings.key(key)
+  if (key === 's' || key === 'S') return openSettings()
   if (key === 'q' || key === 'Q' || isEsc(key) || isCtrlC(key)) return screen.exit(0)
   if (key === 'k' || key === 'K') return act(doWriteKeys)
   if (key === 'u' || key === 'U') return act(doRemoveKeys)
@@ -123,3 +146,8 @@ const onKey = key => {
 const screen = createScreen({ render, onKey })
 screen.draw()
 refresh()
+agentKinds()
+  .then(kinds => {
+    state.kinds.splice(0, state.kinds.length, ...kinds)
+  })
+  .catch(() => {})
