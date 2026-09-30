@@ -8,6 +8,12 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- Settings screen: `,` in the issues popup (from any tab) and `s` in the setup popup. It shows, hides
+  and reorders the tabs, sets the default agent, chooses how each agent starts (a mode such as Claude
+  Code's *plan* or *skip permissions*, Codex's *read only* or *no sandbox*, plus extra arguments), and
+  leads to the Shortcut and Linear accounts. Changes are written to `config.json` at once and apply in
+  the open popup. New `agent_modes` config key with the modes offered per agent kind; the confirmation
+  screen names the mode, in red when it is dangerous.
 - Shortcut stories next to GitHub issues. The popup has three tabs, All, GitHub and Shortcut, and
   `tabs` in `config.json` chooses which ones appear and in what order. The Shortcut tab asks for an API
   token the first time, checks it and saves it in `secrets.json` (mode `0600`); `,` replaces or removes
@@ -33,6 +39,9 @@ All notable changes to this project are documented here. The format follows
 
 ### Changed
 
+- `,` opens the settings on every tab; the token screen of Shortcut and Linear is reached from its
+  *Accounts* row. Saving to `config.json` (the settings, `d` on the confirmation screen) refuses to
+  overwrite a file that is not valid JSON.
 - The default `label` is `{ref} {title}`, which renders exactly as before for GitHub issues.
 - `issues.mjs --source all` lists the sources of the configured tabs.
 - The setup popup checks `gh` only when a GitHub tab is shown. The keybinding descriptions say

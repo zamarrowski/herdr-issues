@@ -10,7 +10,7 @@ Guidance for AI coding agents (and humans in a hurry) working on this repository
 - **herdr only through its CLI**, via `lib/herdr.mjs` and `HERDR_BIN_PATH`. Do not talk to the socket
   or read herdr's internal files.
 - **Stay agent-agnostic.** Never branch on an agent kind in code. Behaviour that differs per agent
-  must be data in `config.json` (`agent_args`, `trust_prompt_pattern`) with a sensible default.
+  must be data in `config.json` (`agent_args`, `agent_modes`, `trust_prompt_pattern`) with a sensible default.
 - **Tests:** `npm test` (node:test). They must run without herdr, `gh`, network or a TTY. herdr is
   scripted by `test/fixtures/fake-herdr.mjs`; extend its scenarios rather than mocking modules.
   `test/manifest.test.mjs` checks that `herdr-plugin.toml`, `package.json` and `config.example.json`

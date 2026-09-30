@@ -54,6 +54,12 @@ describe('validate', () => {
     assert.ok(validate({ prompt: 'a\nb' }).some(w => w.includes('line breaks')))
     assert.deepEqual(validate({ prompt: 'a\nb', submit: true }), [])
   })
+  it('checks agent_modes', () => {
+    assert.deepEqual(validate({ agent_modes: { claude: { plan: ['--permission-mode', 'plan'], hidden: [] } } }), [])
+    const warnings = validate({ agent_modes: { claude: ['--x'], codex: { yolo: '--yolo' } } })
+    assert.ok(warnings.some(w => w.includes('"agent_modes.claude" should be an object')))
+    assert.ok(warnings.some(w => w.includes('"agent_modes.codex.yolo" should be an array of strings')))
+  })
   it('rejects non-objects', () => {
     assert.deepEqual(validate([1]), ['config.json must contain a JSON object'])
   })
@@ -92,6 +98,14 @@ describe('saveConfigValue', () => {
     saveConfigValue('agent', 'codex', file)
     saveConfigValue('limit', 5, file)
     assert.deepEqual(JSON.parse(fs.readFileSync(file, 'utf8')), { agent: 'codex', limit: 5 })
+    saveConfigValue('limit', undefined, file)
+    assert.deepEqual(JSON.parse(fs.readFileSync(file, 'utf8')), { agent: 'codex' }, 'undefined removes the key')
+  })
+  it('refuses to replace a file that does not parse', () => {
+    const file = path.join(tempDir(), 'config.json')
+    fs.writeFileSync(file, '{ "agent": "codex", ')
+    assert.throws(() => saveConfigValue('agent', 'claude', file), /not valid JSON/)
+    assert.equal(fs.readFileSync(file, 'utf8'), '{ "agent": "codex", ')
   })
 })
 

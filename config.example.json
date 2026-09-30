@@ -1,5 +1,5 @@
 {
-  "$comment": "Every key is optional and documented in docs/configuration.md. Templates accept {number} {ref} {source} {title} {slug} {url} {repo} {owner} {name} {branch} {label} {agent} {author} {labels} {vcs_branch}. The Shortcut and Linear API tokens never go here: the Shortcut and Linear tabs of the popup ask for them.",
+  "$comment": "Every key is optional and documented in docs/configuration.md. Templates accept {number} {ref} {source} {title} {slug} {url} {repo} {owner} {name} {branch} {label} {agent} {author} {labels} {vcs_branch}. The Shortcut and Linear API tokens never go here: the Shortcut and Linear tabs of the popup ask for them. `,` in the issues popup edits tabs, agent and agent_args for you.",
   "tabs": [
     "all",
     "github",
@@ -8,6 +8,47 @@
   ],
   "agent": "auto",
   "agent_args": {},
+  "agent_modes": {
+    "claude": {
+      "accept edits": [
+        "--permission-mode",
+        "acceptEdits"
+      ],
+      "auto": [
+        "--permission-mode",
+        "auto"
+      ],
+      "plan": [
+        "--permission-mode",
+        "plan"
+      ],
+      "skip permissions (dangerous)": [
+        "--dangerously-skip-permissions"
+      ]
+    },
+    "codex": {
+      "read only": [
+        "--sandbox",
+        "read-only"
+      ],
+      "workspace write": [
+        "--sandbox",
+        "workspace-write"
+      ],
+      "no sandbox, no approvals (dangerous)": [
+        "--dangerously-bypass-approvals-and-sandbox"
+      ]
+    },
+    "gemini": {
+      "auto edit": [
+        "--approval-mode",
+        "auto_edit"
+      ],
+      "yolo (dangerous)": [
+        "--yolo"
+      ]
+    }
+  },
   "agent_name": "issue-{number}",
   "branch": "issue-{number}-{slug}",
   "base": "",
